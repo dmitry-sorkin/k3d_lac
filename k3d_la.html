@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>K3D калибровщик Linear Advance v1.2</title>
+  <script src="lib.js"></script>
+  <script src="wasm_exec.js"></script>
+  <script src="gwaloader.js"></script>
+  <link rel="stylesheet" href="k3d_la_style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body onload="initForm()">
+<h1>K3D калибровщик Linear Advance v1.2</h1>
+  <p>Полезные ссылки:</p>
+  <ul>
+    <li><a href="http://k3d.tech/calibrations/la/">Инструкция по использованию</a></li>
+    <li><a href="http://k3d.tech/calibrations/la/#_10">Что делать, если толщина центрального участка не меняется?</a></li>
+  </ul>
+  <p>Поддержать автора:</p>
+  <ul>
+    <li><a href="https://donate.stream/dmitrysorkin/">Поддержать из РФ</a></li>
+    <li><a href="https://www.donationalerts.com/r/dsorkin/">Поддержать из-за рубежа</a></li>
+  </ul>
+  <table>
+    <tbody>
+      <tr>
+        <th>Параметр</th>
+        <th>Значение</th>
+        <th>Описание</th>
+      </tr>
+      <!-- Параметры принтера -->
+      <tr>
+        <td>Размер стола по X</td>
+        <td><input type="text" id="k3d_la_bedX" name="k3d_la_bedX" value="235"></td>
+        <td>[мм] Для декартовых принтеров - максимальная координата по оси X<br>Для дельта-принтеров - <b>диаметр
+            стола</b></td>
+      </tr>
+      <tr>
+        <td>Размер стола по Y</td>
+        <td><input type="text" id="k3d_la_bedY" name="k3d_la_bedY" value="235"></td>
+        <td>[мм] Для декартовых принтеров - максимальная координата по оси Y<br>Для дельта-принтеров - <b>диаметр
+            стола</b></td>
+      </tr>
+      <tr>
+        <td>Прошивка</td>
+        <td style="text-align:center;">
+          <form><input type="radio" id="k3d_la_firmwareMarlin" name="k3d_la_firmware" value="Marlin" checked><label
+              for="k3d_la_firmwareMarlin">Marlin</label><br>
+            <input type="radio" id="k3d_la_firmwareKlipper" name="k3d_la_firmware" value="Klipper"><label
+              for="k3d_la_firmwareKlipper">Klipper</label><br>
+            <input type="radio" id="k3d_la_firmwareRRF" name="k3d_la_firmware" value="RRF"><label
+              for="k3d_la_firmwareRRF">RRF</label>
+          </form>
+        </td>
+        <td>Прошивка, установленная на вашем принтере. Если не знаете, то, скорее всего, Marlin</td>
+      </tr>
+      <tr>
+        <td>Начало координат в центре стола</td>
+        <td style="text-align:center"><input type="checkbox" id="k3d_la_delta" name="k3d_la_delta"></td>
+        <td>Для декартовых принтеров должно быть выключено, для дельт включено</td>
+      </tr>
+      <tr>
+        <td>Автокалибровка стола</td>
+        <td style="text-align:center"><input type="checkbox" id="k3d_la_g29" name="k3d_la_g29"></td>
+        <td>Надо ли делать автокалибровку стола перед печатью (G29)? Если у вас нет датчика автокалибровки, то
+          оставляйте выключенным</td>
+      </tr>
+      <tr>
+        <td>Скорость перемещений</td>
+        <td><input type="text" id="k3d_la_travelSpeed" name="k3d_la_travelSpeed" value="150"></td>
+        <td>[мм/с] Скорость, с которой будут происходить перемещения без экструдирования</td>
+      </tr>
+      <!-- Параметры филамента -->
+      <tr>
+        <td>Температура хотэнда</td>
+        <td><input type="text" id="k3d_la_hotendTemperature" name="k3d_la_hotendTemperature" value="210"></td>
+        <td>[°C] До прогрева стола хотэнд будет нагрет до 150 градусов. После полного нагрева стола хотэнд догреется до
+          указанной температуры</td>
+      </tr>
+      <tr>
+        <td>Температура стола</td>
+        <td><input type="text" id="k3d_la_bedTemperature" name="k3d_la_bedTemperature" value="60"></td>
+        <td>[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и
+          автокалибровки стола</td>
+      </tr>
+      <tr>
+        <td>Скорость вентилятора</td>
+        <td><input type="text" id="k3d_la_cooling" name="k3d_la_cooling" value="100"></td>
+        <td>[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении
+          вентилятора, на 1 слое обдув будет выключен. На 2-4 слоях скорость вращения вентиляторов будет ступенчато
+          увелиичиваться до указанного значения</td>
+      </tr>
+      <tr>
+        <td>Длина отката</td>
+        <td><input type="text" id="k3d_la_retractLength" name="k3d_la_retractLength" value="1.0"></td>
+        <td>[мм] Длина, на которую будет втягиваться пруток для предотвращения подтекания пластика при перемещениях.
+          Если не знаете, то для директ экструдера поставьте 1.0, а для боуден экструдера 6.0</td>
+      </tr>
+      <tr>
+        <td>Скорость отката</td>
+        <td><input type="text" id="k3d_la_retractSpeed" name="k3d_la_retractSpeed" value="25"></td>
+        <td>[мм/с] Скорость, с которой будет производиться откат. Если не знаете, то поставьте 25</td>
+      </tr>
+      <tr>
+        <td>Поток</td>
+        <td><input type="text" id="k3d_la_flow" name="k3d_la_flow" value="100"></td>
+        <td>[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии</td>
+      </tr>
+      <!-- Параметры первого слоя -->
+      <tr>
+        <td>Ширина линии первого слоя</td>
+        <td><input type="text" id="k3d_la_firstLayerLineWidth" name="k3d_la_firstLayerLineWidth" value="0.6"></td>
+        <td>[мм] Ширина линий, с которой будет напечатана подложка под моделью. В общем случае рекомендуется выставить
+          150% от диаметра сопла</td>
+      </tr>
+      <tr>
+        <td>Скорость печати первого слоя</td>
+        <td><input type="text" id="k3d_la_firstLayerSpeed" name="k3d_la_firstLayerSpeed" value="30"></td>
+        <td>[мм/с] Скорость, с которой будет напечатана подложка</td>
+      </tr>
+      <tr>
+        <td>Z-offset</td>
+        <td><input type="text" id="k3d_la_zOffset" name="k3d_la_zOffset" value="0.0"></td>
+        <td>[мм] Смещение всей модели по вертикали. Нужно чтобы компенсировать слишком тонкую/толстую калибровку первого
+          слоя. В общем случае оставьте ноль</td>
+      </tr>
+      <!-- Параметры модели -->
+      <tr>
+        <td>Количество периметров</td>
+        <td><input type="text" id="k3d_la_numPerimeters" name="k3d_la_numPerimeters" value="2"></td>
+        <td>Количество периметров для основного тела калибровочной модели. Для филаментов с околонулевой усадкой (PLA,
+          некоторые композиты) 1-2. Для филаментов с сильной усадкой (ABS и подобные) 2+. Для флексов 2-4 в зависимости
+          от их жесткости и желаемой высоты башенки</td>
+      </tr>
+      <tr>
+        <td>Ширина линии</td>
+        <td><input type="text" id="k3d_la_lineWidth" name="k3d_la_lineWidth" value="0.4"></td>
+        <td>[мм] Ширина линий, с которой будут напечатана тестовая модель. В общем случае рекомендуется выставить равной
+          диаметру сопла</td>
+      </tr>
+      <tr>
+        <td>Толщина слоя</td>
+        <td><input type="text" id="k3d_la_layerHeight" name="k3d_la_layerHeight" value="0.2"></td>
+        <td>[мм] Толщина слоёв всей модели. В общем случае 50% от ширины линии</td>
+      </tr>
+      <!-- Параметры калибровки -->
+      <tr>
+        <td>Скорость быстрых участков</td>
+        <td><input type="text" id="k3d_la_fastPrintSpeed" name="k3d_la_fastPrintSpeed" value="100"></td>
+        <td>[мм/с] Скорость, с которой будут печататься быстрые участки. Лучше указать высокие значения (100-150)</td>
+      </tr>
+      <tr>
+        <td>Скорость медленных участков</td>
+        <td><input type="text" id="k3d_la_slowPrintSpeed" name="k3d_la_slowPrintSpeed" value="20"></td>
+        <td>[мм/с] Скорость, с которой будут печататься медленные участки. Лучше указать низкие значения (10-30)</td>
+      </tr>
+      <tr>
+        <td>Начальное значение коэффициента LA</td>
+        <td><input type="text" id="k3d_la_initKFactor" name="k3d_la_initKFactor" value="0.0"></td>
+        <td>С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя</td>
+      </tr>
+      <tr>
+        <td>Конечное значение коэффициента LA</td>
+        <td><input type="text" id="k3d_la_endKFactor" name="k3d_la_endKFactor" value="0.2"></td>
+        <td>До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ
+          экструдеров обычно хватает 0.2, для боуденов 1.5</td>
+      </tr>
+      <tr>
+        <td>Количество сегментов</td>
+        <td><input type="text" id="k3d_la_numSegments" name="k3d_la_numSegments" value="10"></td>
+        <td>Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально
+          разделены для упрощения анализа модели</td>
+      </tr>
+      <tr>
+        <td>Высота сегмента</td>
+        <td><input type="text" id="k3d_la_segmentHeight" name="k3d_la_segmentHeight" value="3.0"></td>
+        <td>[мм] Высота одного сегмента. К примеру, если высота сегмента 3мм, а количество сегментов 10, то
+          высота всей модели будет 30мм</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="button-section">
+    <button class="generate-button" onclick="generate();" id="generateButton" style="display:none">Генерировать и
+      скачать</button>
+    <p id="generateButtonLoading"> Генератор загружается...</p>
+    <div id="resultContainer"></div>
+  </div>
+  <footer>
+    <nav class="navbar">
+      <a href="./index.html" class="navbar-back" aria-label="Назад: Сайт">
+        <div class="navbar-icon"><svg class="navbar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path>
+          </svg></div>
+        <div class="navbar-title">
+          <div class="navbar-ellipsis">
+            <span class="navbar-direction"> Назад </span>
+            Сайт
+          </div>
+        </div>
+      </a>
+    </nav>
+    <div class="footer-meta">
+      <div class="footer-meta-inner">
+        <div class="copyright">
+          Written by Dmitry Sorkin and Kekht<br>
+          Copyright © 2022
+        </div>
+        <div class="social">
+          <a href="https://t.me/vostok3dp" target="_blank" rel="noopener" title="t.me" class="social-link">
+            <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512">
+              <path
+                d="M248 8C111.033 8 0 119.033 0 256s111.033 248 248 248 248-111.033 248-248S384.967 8 248 8Zm114.952 168.66c-3.732 39.215-19.881 134.378-28.1 178.3-3.476 18.584-10.322 24.816-16.948 25.425-14.4 1.326-25.338-9.517-39.287-18.661-21.827-14.308-34.158-23.215-55.346-37.177-24.485-16.135-8.612-25 5.342-39.5 3.652-3.793 67.107-61.51 68.335-66.746.153-.655.3-3.1-1.154-4.384s-3.59-.849-5.135-.5q-3.283.746-104.608 69.142-14.845 10.194-26.894 9.934c-8.855-.191-25.888-5.006-38.551-9.123-15.531-5.048-27.875-7.717-26.8-16.291q.84-6.7 18.45-13.7 108.446-47.248 144.628-62.3c68.872-28.647 83.183-33.623 92.511-33.789 2.052-.034 6.639.474 9.61 2.885a10.452 10.452 0 0 1 3.53 6.716 43.765 43.765 0 0 1 .417 9.769Z">
+              </path>
+            </svg>
+          </a>
+          <a href="https://www.youtube.com/c/SorkinDmitry" target="_blank" rel="noopener" title="www.youtube.com"
+            class="social-link">
+            <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path
+                d="m10 15 5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73Z">
+              </path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
