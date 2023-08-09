@@ -14,180 +14,190 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
 </head>
 
-<body onload="initForm()">
-<h1>K3D калибровщик Linear Advance v1.2</h1>
-  <p>Полезные ссылки:</p>
+<body onload="init()">
+<h1 class="lang" id="header.title">K3D калибровщик Linear Advance</h1>
+  <p class="lang" id="header.useful_links">Полезные ссылки:</p>
   <ul>
-    <li><a href="http://k3d.tech/calibrations/la/">Инструкция по использованию</a></li>
-    <li><a href="http://k3d.tech/calibrations/la/#_10">Что делать, если толщина центрального участка не меняется?</a></li>
+    <li><a class="lang" id="header.instruction" href="http://k3d.tech/calibrations/la/">Инструкция по использованию</a></li>
+    <li><a class="lang" id="header.width_not_changing" href="http://k3d.tech/calibrations/la/#_10">Что делать, если толщина центрального участка не меняется?</a></li>
   </ul>
-  <p>Поддержать автора:</p>
-  <ul>
-    <li><a href="https://donate.stream/dmitrysorkin/">Поддержать из РФ</a></li>
-    <li><a href="https://www.donationalerts.com/r/dsorkin/">Поддержать из-за рубежа</a></li>
-  </ul>
+  <p class="lang" id="header.language">Язык:</p><p><a href="k3d_la.html?lang=ru">Русский</a></p>
   <table>
     <tbody>
       <tr>
-        <th>Параметр</th>
-        <th>Значение</th>
-        <th>Описание</th>
+        <th class="lang" id="table.header.parameter">Параметр</th>
+        <th class="lang" id="table.header.value">Значение</th>
+        <th class="lang" id="table.header.description">Описание</th>
       </tr>
       <!-- Параметры принтера -->
       <tr>
-        <td>Размер стола по X</td>
+        <td class="lang" id="table.bed_size_x.title">Размер стола по X</td>
         <td><input type="text" id="k3d_la_bedX" name="k3d_la_bedX" value="235"></td>
-        <td>[мм] Для декартовых принтеров - максимальная координата по оси X<br>Для дельта-принтеров - <b>диаметр
-            стола</b></td>
+        <td class="lang" id="table.bed_size_x.description">[мм] Для декартовых принтеров - максимальная координата по оси X<br>Для дельта-принтеров - <b>диаметр стола</b></td>
       </tr>
       <tr>
-        <td>Размер стола по Y</td>
+        <td class="lang" id="table.bed_size_y.title">Размер стола по Y</td>
         <td><input type="text" id="k3d_la_bedY" name="k3d_la_bedY" value="235"></td>
-        <td>[мм] Для декартовых принтеров - максимальная координата по оси Y<br>Для дельта-принтеров - <b>диаметр
-            стола</b></td>
+        <td class="lang" id="table.bed_size_y.description">[мм] Для декартовых принтеров - максимальная координата по оси Y<br>Для дельта-принтеров - <b>диаметр стола</b></td>
       </tr>
       <tr>
-        <td>Прошивка</td>
+        <td class="lang" id="table.firmware.title">Прошивка</td>
         <td style="text-align:center;">
-          <form><input type="radio" id="k3d_la_firmwareMarlin" name="k3d_la_firmware" value="Marlin" checked><label
-              for="k3d_la_firmwareMarlin">Marlin</label><br>
-            <input type="radio" id="k3d_la_firmwareKlipper" name="k3d_la_firmware" value="Klipper"><label
-              for="k3d_la_firmwareKlipper">Klipper</label><br>
-            <input type="radio" id="k3d_la_firmwareRRF" name="k3d_la_firmware" value="RRF"><label
-              for="k3d_la_firmwareRRF">RRF</label>
+          <form><input type="radio" id="k3d_la_firmwareMarlin" name="k3d_la_firmware" value="Marlin" checked><label for="k3d_la_firmwareMarlin">Marlin</label><br>
+            <input type="radio" id="k3d_la_firmwareKlipper" name="k3d_la_firmware" value="Klipper"><label for="k3d_la_firmwareKlipper">Klipper</label><br>
+            <input type="radio" id="k3d_la_firmwareRRF" name="k3d_la_firmware" value="RRF"><label for="k3d_la_firmwareRRF">RRF</label>
           </form>
         </td>
-        <td>Прошивка, установленная на вашем принтере. Если не знаете, то, скорее всего, Marlin</td>
+        <td class="lang" id="table.firmware.description">Прошивка, установленная на вашем принтере. Если не знаете, то, скорее всего, Marlin</td>
       </tr>
       <tr>
-        <td>Начало координат в центре стола</td>
+        <td class="lang" id="table.delta.title">Начало координат в центре стола</td>
         <td style="text-align:center"><input type="checkbox" id="k3d_la_delta" name="k3d_la_delta"></td>
-        <td>Для декартовых принтеров должно быть выключено, для дельт включено</td>
+        <td class="lang" id="table.delta.description">Для декартовых принтеров должно быть выключено, для дельт включено</td>
       </tr>
       <tr>
-        <td>Автокалибровка стола</td>
+        <td class="lang" id="table.bed_probe.title">Автокалибровка стола</td>
         <td style="text-align:center"><input type="checkbox" id="k3d_la_g29" name="k3d_la_g29"></td>
-        <td>Надо ли делать автокалибровку стола перед печатью (G29)? Если у вас нет датчика автокалибровки, то
+        <td class="lang" id="table.bed_probe.description">Надо ли делать автокалибровку стола перед печатью (G29)? Если у вас нет датчика автокалибровки, то
           оставляйте выключенным</td>
       </tr>
       <tr>
-        <td>Скорость перемещений</td>
+        <td class="lang" id="table.travel_speed.title">Скорость перемещений</td>
         <td><input type="text" id="k3d_la_travelSpeed" name="k3d_la_travelSpeed" value="150"></td>
-        <td>[мм/с] Скорость, с которой будут происходить перемещения без экструдирования</td>
+        <td class="lang" id="table.travel_speed.description">[мм/с] Скорость, с которой будут происходить перемещения без экструдирования</td>
       </tr>
       <!-- Параметры филамента -->
       <tr>
-        <td>Температура хотэнда</td>
+        <td class="lang" id="table.hotend_temp.title">Температура хотэнда</td>
         <td><input type="text" id="k3d_la_hotendTemperature" name="k3d_la_hotendTemperature" value="210"></td>
-        <td>[°C] До прогрева стола хотэнд будет нагрет до 150 градусов. После полного нагрева стола хотэнд догреется до
+        <td class="lang" id="table.hotend_temp.description">[°C] До прогрева стола хотэнд будет нагрет до 150 градусов. После полного нагрева стола хотэнд догреется до
           указанной температуры</td>
       </tr>
       <tr>
-        <td>Температура стола</td>
+        <td class="lang" id="table.bed_temp.title">Температура стола</td>
         <td><input type="text" id="k3d_la_bedTemperature" name="k3d_la_bedTemperature" value="60"></td>
-        <td>[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и
-          автокалибровки стола</td>
+        <td class="lang" id="table.bed_temp.description">[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и автокалибровки стола</td>
       </tr>
       <tr>
-        <td>Скорость вентилятора</td>
+        <td class="lang" id="table.fan_speed.title">Скорость вентилятора</td>
         <td><input type="text" id="k3d_la_cooling" name="k3d_la_cooling" value="100"></td>
-        <td>[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении
-          вентилятора, на 1 слое обдув будет выключен. На 2-4 слоях скорость вращения вентиляторов будет ступенчато
-          увелиичиваться до указанного значения</td>
+        <td class="lang" id="table.fan_speed.description">[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении вентилятора, на 1 слое он будет включен на 1/3 от заданного значения, на 2 слое на 2/3, на 4 слое на заданное значение</td>
       </tr>
       <tr>
-        <td>Длина отката</td>
+        <td class="lang" id="table.retract_length.title">Длина отката</td>
         <td><input type="text" id="k3d_la_retractLength" name="k3d_la_retractLength" value="1.0"></td>
-        <td>[мм] Длина, на которую будет втягиваться пруток для предотвращения подтекания пластика при перемещениях.
+        <td class="lang" id="table.retract_length.description">[мм] Длина, на которую будет втягиваться пруток для предотвращения подтекания пластика при перемещениях.
           Если не знаете, то для директ экструдера поставьте 1.0, а для боуден экструдера 6.0</td>
       </tr>
       <tr>
-        <td>Скорость отката</td>
+        <td class="lang" id="table.retract_speed.title">Скорость отката</td>
         <td><input type="text" id="k3d_la_retractSpeed" name="k3d_la_retractSpeed" value="25"></td>
-        <td>[мм/с] Скорость, с которой будет производиться откат. Если не знаете, то поставьте 25</td>
+        <td class="lang" id="table.retract_speed.description">[мм/с] Скорость, с которой будет производиться откат. Если не знаете, то поставьте 25</td>
       </tr>
       <tr>
-        <td>Поток</td>
+        <td class="lang" id="table.flow.title">Поток</td>
         <td><input type="text" id="k3d_la_flow" name="k3d_la_flow" value="100"></td>
-        <td>[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии</td>
+        <td class="lang" id="table.flow.description">[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии</td>
       </tr>
       <!-- Параметры первого слоя -->
       <tr>
-        <td>Ширина линии первого слоя</td>
+        <td class="lang" id="table.first_line_width.title">Ширина линии первого слоя</td>
         <td><input type="text" id="k3d_la_firstLayerLineWidth" name="k3d_la_firstLayerLineWidth" value="0.6"></td>
-        <td>[мм] Ширина линий, с которой будет напечатана подложка под моделью. В общем случае рекомендуется выставить
-          150% от диаметра сопла</td>
+        <td class="lang" id="table.first_line_width.description">[мм] Ширина линий, с которой будет напечатана подложка под моделью. В общем случае рекомендуется выставить 150% от диаметра сопла</td>
       </tr>
       <tr>
-        <td>Скорость печати первого слоя</td>
+        <td class="lang" id="table.first_print_speed.title">Скорость печати первого слоя</td>
         <td><input type="text" id="k3d_la_firstLayerSpeed" name="k3d_la_firstLayerSpeed" value="30"></td>
-        <td>[мм/с] Скорость, с которой будет напечатана подложка</td>
+        <td class="lang" id="table.first_print_speed.description">[мм/с] Скорость, с которой будет напечатана подложка</td>
       </tr>
       <tr>
-        <td>Z-offset</td>
+        <td class="lang" id="table.z_offset.title">Z-offset</td>
         <td><input type="text" id="k3d_la_zOffset" name="k3d_la_zOffset" value="0.0"></td>
-        <td>[мм] Смещение всей модели по вертикали. Нужно чтобы компенсировать слишком тонкую/толстую калибровку первого
-          слоя. В общем случае оставьте ноль</td>
+        <td class="lang" id="table.z_offset.description">[мм] Смещение всей модели по вертикали. Нужно чтобы компенсировать слишком тонкую/толстую калибровку первого слоя. В общем случае оставьте ноль</td>
       </tr>
       <!-- Параметры модели -->
       <tr>
-        <td>Количество периметров</td>
+        <td class="lang" id="table.num_perimeters.title">Количество периметров</td>
         <td><input type="text" id="k3d_la_numPerimeters" name="k3d_la_numPerimeters" value="2"></td>
-        <td>Количество периметров для основного тела калибровочной модели. Для филаментов с околонулевой усадкой (PLA,
+        <td class="lang" id="table.num_perimeters.description">Количество периметров для основного тела калибровочной модели. Для филаментов с околонулевой усадкой (PLA,
           некоторые композиты) 1-2. Для филаментов с сильной усадкой (ABS и подобные) 2+. Для флексов 2-4 в зависимости
           от их жесткости и желаемой высоты башенки</td>
       </tr>
       <tr>
-        <td>Ширина линии</td>
+        <td class="lang" id="table.line_width.title">Ширина линии</td>
         <td><input type="text" id="k3d_la_lineWidth" name="k3d_la_lineWidth" value="0.4"></td>
-        <td>[мм] Ширина линий, с которой будут напечатана тестовая модель. В общем случае рекомендуется выставить равной
-          диаметру сопла</td>
+        <td class="lang" id="table.line_width.description">[мм] Ширина линий, с которой будут напечатана тестовая модель. В общем случае рекомендуется выставить равной диаметру сопла</td>
       </tr>
       <tr>
-        <td>Толщина слоя</td>
+        <td class="lang" id="table.layer_height.title">Толщина слоя</td>
         <td><input type="text" id="k3d_la_layerHeight" name="k3d_la_layerHeight" value="0.2"></td>
-        <td>[мм] Толщина слоёв всей модели. В общем случае 50% от ширины линии</td>
+        <td class="lang" id="table.layer_height.description">[мм] Толщина слоёв всей модели. В общем случае 50% от ширины линии</td>
       </tr>
       <!-- Параметры калибровки -->
       <tr>
-        <td>Скорость быстрых участков</td>
+        <td class="lang" id="table.fast_segment_speed.title">Скорость быстрых участков</td>
         <td><input type="text" id="k3d_la_fastPrintSpeed" name="k3d_la_fastPrintSpeed" value="100"></td>
-        <td>[мм/с] Скорость, с которой будут печататься быстрые участки. Лучше указать высокие значения (100-150)</td>
+        <td class="lang" id="table.fast_segment_speed.description">[мм/с] Скорость, с которой будут печататься быстрые участки. Лучше указать высокие значения (100-150)</td>
       </tr>
       <tr>
-        <td>Скорость медленных участков</td>
+        <td class="lang" id="table.slow_segment_speed.title">Скорость медленных участков</td>
         <td><input type="text" id="k3d_la_slowPrintSpeed" name="k3d_la_slowPrintSpeed" value="20"></td>
-        <td>[мм/с] Скорость, с которой будут печататься медленные участки. Лучше указать низкие значения (10-30)</td>
+        <td class="lang" id="table.slow_segment_speed.description">[мм/с] Скорость, с которой будут печататься медленные участки. Лучше указать низкие значения (10-30)</td>
       </tr>
       <tr>
-        <td>Начальное значение коэффициента LA</td>
+        <td class="lang" id="table.init_la.title">Начальное значение коэффициента LA</td>
         <td><input type="text" id="k3d_la_initKFactor" name="k3d_la_initKFactor" value="0.0"></td>
-        <td>С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя</td>
+        <td class="lang" id="table.init_la.description">С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя</td>
       </tr>
       <tr>
-        <td>Конечное значение коэффициента LA</td>
+        <td class="lang" id="table.end_la.title">Конечное значение коэффициента LA</td>
         <td><input type="text" id="k3d_la_endKFactor" name="k3d_la_endKFactor" value="0.2"></td>
-        <td>До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ
+        <td class="lang" id="table.end_la.description">До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ
           экструдеров обычно хватает 0.2, для боуденов 1.5</td>
       </tr>
       <tr>
-        <td>Количество сегментов</td>
+        <td class="lang" id="table.num_segments.title">Количество сегментов</td>
         <td><input type="text" id="k3d_la_numSegments" name="k3d_la_numSegments" value="10"></td>
-        <td>Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально
+        <td class="lang" id="table.num_segments.description">Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально
           разделены для упрощения анализа модели</td>
       </tr>
       <tr>
-        <td>Высота сегмента</td>
+        <td class="lang" id="table.segment_height.title">Высота сегмента</td>
         <td><input type="text" id="k3d_la_segmentHeight" name="k3d_la_segmentHeight" value="3.0"></td>
-        <td>[мм] Высота одного сегмента. К примеру, если высота сегмента 3мм, а количество сегментов 10, то
+        <td class="lang" id="table.segment_height.description">[мм] Высота одного сегмента. К примеру, если высота сегмента 3мм, а количество сегментов 10, то
           высота всей модели будет 30мм</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.start_gcode.title">Начальный G-код</td>
+		<!-- It can't be formatted, otherwise formatting breaks in the browser :( -->
+        <td><textarea type="text" id="startGcode" name="startGcode" rows="5">
+M190 S$BEDTEMP ;прогреть стол до температуры, указанной в настройках
+M109 S$HOTTEMP ;прогреть хотэнд до температуры, указанной в настройках
+G28 ;припарковать все оси
+$G29 ;снять карту высот стола
+G90 ;абсолютная система координат
+G92 E0 ;сбросить координату экструдера
+M220 S100 ;Множитель скорости 100%
+M221 S$FLOW ;Множитель потока взять из настроек</textarea></td>
+        <td class="lang" id="table.start_gcode.description">Начальный G-код для печати. В общем случае не требуется менять его вручную</td>
+      </tr>
+	  <tr>
+        <td class="lang" id="table.end_gcode.title">Конечный G-код</td>
+        <td><textarea type="text" id="endGcode" name="endGcode" rows="5">
+M104 S0 ;выключить хотэнд
+M140 S0 ;выключить нагрев стола
+M106 S0 ;выключить вентилятор модели
+G91 ;относительная система координат
+G1 E-5 F600 ;сделать откат на 5мм
+G1 Z1 F300 ;поднять голову на 1мм</textarea></td>
+        <td class="lang" id="table.end_gcode.description">Конечный G-код для печати. В общем случае не требуется менять его вручную</td>
       </tr>
     </tbody>
   </table>
   <div class="button-section">
-    <button class="generate-button" onclick="generate();" id="generateButton" style="display:none">Генерировать и
-      скачать</button>
+    <button class="generate-button" onclick="generate();" id="generateButton" style="display:none">Генерировать и скачать</button>
     <p id="generateButtonLoading"> Генератор загружается...</p>
+	<button class="reset-button" onclick="reset();" id="resetButton">Сбросить настройки</button>
     <div id="resultContainer"></div>
   </div>
   <footer>
@@ -199,7 +209,7 @@
         <div class="navbar-title">
           <div class="navbar-ellipsis">
             <span class="navbar-direction"> Назад </span>
-            Сайт
+            <span class="lang" id="navbar.site">Сайт</span>
           </div>
         </div>
       </a>

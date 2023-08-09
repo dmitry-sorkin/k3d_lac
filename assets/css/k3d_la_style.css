@@ -323,3 +323,8 @@ a.social-link:hover {
 svg.social-icon {
     fill: rgba(255, 255, 255, 0.7)
 }
+
+span.inline-error {
+	color: rgba(255, 75, 43, 1.0);
+	font-weight: bold;
+}

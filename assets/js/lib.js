@@ -1,3 +1,7 @@
+const calibrator_version = 'v1.2';
+window.calibrator_version = calibrator_version;
+var savedSegmentsInfo = null;
+
 function download(filename, text) {
     var element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -105,6 +109,16 @@ var formFields = [
     "k3d_la_segmentHeight",
     "k3d_la_numSegments"
 ];
+var segmentFields = [
+    "k3d_la_initKFactor",
+	"k3d_la_endKFactor",
+	"k3d_la_numSegments"
+];
+var segmentKeys = [
+	"init_la",
+	"end_la",
+	"num_segments"
+];
 
 var saveForm = function () {
     for (var elementId of formFields) {
@@ -146,9 +160,232 @@ function loadForm() {
 }
 
 function initForm() {
-    for (var elementId of formFields) {
-        var element = document.getElementById(elementId);
-        element.onchange = saveForm;
-    }
     loadForm();
+	for (var elementId of formFields) {
+        var element = document.getElementById(elementId);
+        element.addEventListener('change', function(e) {
+			saveForm();
+			
+			var el = e.target;
+			var id = el.id;
+			
+			if (segmentFields.indexOf(id) != -1) {
+				checkSegments();
+			} else {
+				checkGo();
+			}
+		});
+    }
+	for (var elementId of segmentFields) {
+		var element = document.getElementById(elementId);
+		element.addEventListener('focusin', function(e) {
+			checkSegments();
+		});
+		element.addEventListener('focusout', function(e) {
+			if (e.relatedTarget == undefined || segmentFields.indexOf(e.relatedTarget.id) == -1) {
+				checkGo();
+			}
+		});
+	}
+}
+
+function initLang(key) {
+	var values = window.lang.values;
+	switch (key) {
+		case 'ru':
+			values['header.title'] = 'K3D калибровщик Linear Advance';
+			values['header.description'] = 'Подробное описание работы вы можете прочитать в <a href="https://k3d.tech/calibrations/la/">статье на основном сайте.</a>';
+			values['header.language'] = 'Язык: ';
+			values['header.useful_links'] = 'Полезные ссылки:';
+			values['header.instruction'] = 'Инструкция по использованию';
+			values['header.width_not_changing'] = 'Что делать, если толщина центрального участка не меняется?';
+			
+			values['table.header.parameter'] = 'Параметр';
+			values['table.header.value'] = 'Значение';
+			values['table.header.description'] = 'Описание';
+			
+			values['table.bed_size_x.title'] = 'Размер стола по X';
+			values['table.bed_size_x.description'] = '[мм] Для декартовых принтеров - максимальная координата по оси X<br>Для дельта-принтеров - <b>диаметр стола</b>';
+			values['table.bed_size_y.title'] = 'Размер стола по Y';
+			values['table.bed_size_y.description'] = '[мм] Для декартовых принтеров - максимальная координата по оси Y<br>Для дельта-принтеров - <b>диаметр стола</b>';
+			values['table.firmware.title'] = 'Прошивка';
+			values['table.firmware.description'] = 'Прошивка, установленная на вашем принтере. Если не знаете, то, скорее всего, Marlin';
+			values['table.delta.title'] = 'Начало координат в центре стола';
+			values['table.delta.description'] = 'Для декартовых принтеров должно быть выключено, для дельт включено';
+			values['table.bed_probe.title'] = 'Автокалибровка стола';
+			values['table.bed_probe.description'] = 'Надо ли делать автокалибровку стола перед печатью (G29)? Если у вас нет датчика автокалибровки, то оставляйте выключенным';
+			values['table.travel_speed.title'] = 'Скорость перемещений';
+			values['table.travel_speed.description'] = '[мм/с] Скорость, с которой будут происходить перемещения без экструдирования';
+			values['table.hotend_temp.title'] = 'Температура хотэнда';
+			values['table.hotend_temp.description'] = '[°C] До прогрева стола хотэнд будет нагрет до 150 градусов. После полного нагрева стола хотэнд догреется до указанной температуры';
+			values['table.bed_temp.title'] = 'Температура стола';
+			values['table.bed_temp.description'] = '[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и автокалибровки стола';
+			values['table.fan_speed.title'] = 'Скорость вентилятора';
+			values['table.fan_speed.description'] = '[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении вентилятора, на 1 слое обдув будет выключен. На 2-4 слоях скорость вращения вентиляторов будет ступенчато увелиичиваться до указанного значения';
+			values['table.retract_length.title'] = 'Длина отката';
+			values['table.retract_length.description'] = '[мм] Длина, на которую будет втягиваться пруток для предотвращения подтекания пластика при перемещениях. Если не знаете, то для директ экструдера поставьте 1.0, а для боуден экструдера 6.0';
+			values['table.retract_speed.title'] = 'Скорость отката';
+			values['table.retract_speed.description'] = '[мм/с] Скорость, с которой будет производиться откат. Если не знаете, то поставьте 25';
+			values['table.flow.title'] = 'Поток';
+			values['table.flow.description'] = '[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии';
+			values['table.first_line_width.title'] = 'Ширина линии первого слоя';
+			values['table.first_line_width.description'] = '[мм] Ширина линий, с которой будет напечатана подложка под моделью. В общем случае рекомендуется выставить 150% от диаметра сопла';
+			values['table.first_print_speed.title'] = 'Скорость печати первого слоя';
+			values['table.first_print_speed.description'] = '[мм/с] Скорость, с которой будет напечатана подложка';
+			values['table.z_offset.title'] = 'Z-offset';
+			values['table.z_offset.description'] = '[мм] Смещение всей модели по вертикали. Нужно чтобы компенсировать слишком тонкую/толстую калибровку первого слоя. В общем случае оставьте ноль';
+			values['table.num_perimeters.title'] = 'Количество периметров';
+			values['table.num_perimeters.description'] = 'Количество периметров для основного тела калибровочной модели. Для филаментов с околонулевой усадкой (PLA, некоторые композиты) 1-2. Для филаментов с сильной усадкой (ABS и подобные) 2+. Для флексов 2-4 в зависимости от их жесткости и желаемой высоты башенки';
+			values['table.line_width.title'] = 'Ширина линии';
+			values['table.line_width.description'] = '[мм] Ширина линий, с которой будут напечатаны башенки. В общем случае рекомендуется выставить равной диаметру сопла';
+			values['table.layer_height.title'] = 'Толщина слоя';
+			values['table.layer_height.description'] = '[мм] Толщина слоёв всей модели. В общем случае 50% от ширины линии';
+			values['table.fast_segment_speed.title'] = 'Скорость быстрых участков';
+			values['table.fast_segment_speed.description'] = '[мм/с] Скорость, с которой будут печататься быстрые участки. Лучше указать высокие значения (100-150)';
+			values['table.slow_segment_speed.title'] = 'Скорость медленных участков';
+			values['table.slow_segment_speed.description'] = '[мм/с] Скорость, с которой будут печататься медленные участки. Лучше указать низкие значения (10-30)';
+			values['table.init_la.title'] = 'Начальное значение коэффициента LA';
+			values['table.init_la.description'] = 'С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя';
+			values['table.end_la.title'] = 'Конечное значение коэффициента LA';
+			values['table.end_la.description'] = 'До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ экструдеров обычно хватает 0.2, для боуденов 1.5';
+			
+			values['table.num_segments.title'] = 'Количество сегментов';
+			values['table.num_segments.description'] = 'Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально разделены для упрощения анализа модели';
+			values['table.segment_height.title'] = 'Высота сегмента';
+			values['table.segment_height.description'] = '[мм] Высота одного сегмента башенки. К примеру, если высота сегмента 3мм, а количество сегментов 10, то высота всей башенки будет 30мм';
+			values['table.start_gcode.title'] = 'Начальный G-код';
+			values['table.start_gcode.description'] = 'Код, выполняемый перед печатью теста. Менять на свой страх и риск! Список возможных плейсхолдеров:<br><b>$BEDTEMP</b> - температура стола<br><b>$HOTTEMP</b> - температура хотэнда<br><b>$G29</b> - команда на снятие карты высот стола<br><b>$FLOW</b> - поток';
+			values['table.end_gcode.title'] = 'Конечный G-код';
+			values['table.end_gcode.description'] = 'Код, выполняемый после печати теста. Менять на свой страх и риск!';
+			
+			values['generator.generate_and_download'] = 'Генерировать и скачать';		
+			values['generator.generate_button_loading'] = 'Генератор загружается...';		
+			values['generator.segment'] = '; Сегмент %d: K-Factor: %s\n';
+			values['generator.reset_to_default'] = 'Сбросить настройки';
+			
+			values['navbar.back'] = ' Назад ';
+			values['navbar.site'] = 'Сайт';
+			
+			values['error.bed_size_x.format'] = 'Размер оси Х - ошибка формата';
+			values['error.bed_size_x.small_or_big'] = 'Размер стола по X указан неверно (меньше 100 или больше 1000 мм)';
+			values['error.bed_size_y.format'] = 'Размер оси Y - ошибка формата';
+			values['error.bed_size_y.small_or_big'] = 'Размер стола по Y указан неверно (меньше 100 или больше 1000 мм)';
+			values['error.hotend_temp.format'] = 'Температура хотэнда - ошибка формата';
+			values['error.hotend_temp.too_low'] = 'Температура хотэнда слишком низкая';
+			values['error.hotend_temp.too_high'] = 'Температура хотэнда слишком высокая';
+			values['error.bed_temp.format'] = 'Температура стола - ошибка формата: ';
+			values['error.bed_temp.too_high'] = 'Температура стола слишком высокая';
+			values['error.fan_speed.format'] = 'Скорость вентилятора - ошибка формата';
+			values['error.line_width.format'] = 'Ширина линии - ошибка формата';
+			values['error.line_width.small_or_big'] = 'Неправильная ширина линии (меньше 0.1 или больше 2.0 мм)';
+			values['error.first_line_width.format'] = 'Ширина линии первого слоя - ошибка формата';
+			values['error.first_line_width.small_or_big'] = 'Неправильная ширина линии первого слоя (меньше 0.1 или больше 2.0 мм)';
+			values['error.layer_height.format'] = 'Высота слоя - ошибка формата';
+			values['error.layer_height.small_or_big'] = 'Толщина слоя неправильная (меньше 0.05 или больше 1.2 мм)';
+			values['error.print_speed.format'] = 'Скорость печати - ошибка формата';
+			values['error.print_speed.slow_or_fast'] = 'Скорость печати неправильная (меньше 10 или больше 1000 мм/с)';
+			values['error.first_print_speed.format'] = 'Скорость печати первого слоя - ошибка формата';
+			values['error.first_print_speed.slow_or_fast'] = 'Скорость печати первого слоя неправильная (меньше 10 или больше 1000 мм/с)';
+			values['error.travel_speed.format'] = 'Скорость перемещений - ошибка формата';
+			values['error.travel_speed.slow_or_fast'] = 'Скорость перемещений неправильная (меньше 10 или больше 1000 мм/с)';
+			values['error.num_segments.format'] = 'Количество сегментов - ошибка формата';
+			values['error.num_segments.small_or_big'] = 'Количество сегментов неправильное (меньше 2 или больше 100)';
+			values['error.segment_height.format'] = 'Высота сегмента - ошибка формата';
+			values['error.segment_height.small_or_big'] = 'Высота сегмента неправильная (меньше 0.5 или больше 10 мм)';
+			values['error.z_offset.format'] = 'Z-offset - ошибка формата';
+			values['error.z_offset.small_or_big'] = 'Значение оффсета неправильно (меньше -0.5 или больше 0.5 мм)';
+			values['error.flow.format'] = 'Поток - ошибка формата';
+			values['error.flow.low_or_high'] = 'Ошибка значения: поток должен быть от 50 до 150%';
+			values['error.firmware.not_set'] = 'Ошибка формата: не выбрана прошивка';
+			values['error.retract_length.format'] = 'Длина отката - ошибка формата';
+			values['error.retract_length.small_or_big'] = 'Длина отката неправильная (меньше 0.1 или больше 20 мм)';
+			values['error.retract_speed.format'] = 'Скорость отката - ошибка формата';
+			values['error.retract_speed.small_or_big'] = 'Скорость отката неправильная (меньше 5 или больше 150 мм/с)';
+			values['error.num_perimeters.format'] = 'Количество периметров - ошибка формата';
+			values['error.num_perimeters.small_or_big'] = 'Ошибка значения: количество периметров должно быть от 1 до 5\n';
+			values['error.fast_segment_speed.format'] = 'Скорость печати быстрых участков - ошибка формата';
+			values['error.fast_segment_speed.small_or_big'] = 'Скорость печати быстрых участков неверная (меньше 10 или больше 1000 мм/с';
+			values['error.slow_segment_speed.format'] = 'Скорость печати медленных участков - ошибка формата';
+			values['error.slow_segment_speed.small_or_big'] = 'Скорость печати медленных участков неверная (меньше 10 или больше 1000 мм/с';
+			values['error.init_la.format'] = 'Начальное значение коэффициента LA - ошибка формата';
+			values['error.init_la.small_or_big'] = 'Начальное значение коэффициента LA неверное (меньше 0.0 или больше 2.0)';
+			values['error.end_la.format'] = 'Конечное значение коэффициента LA - ошибка формата';
+			values['error.end_la.small_or_big'] = 'Конечное значение коэффициента LA неверное (меньше 0.0 или больше 2.0)';
+			break;
+	}
+	
+	document.title = window.lang.getString('header.title');
+	var el = document.getElementsByClassName('lang');
+	for (var i = 0; i < el.length; i++) {
+		var item = el[i];
+		item.innerHTML = window.lang.getString(item.id);
+	}
+	document.getElementsByClassName('generate-button')[0].innerHTML = window.lang.getString('generator.generate_and_download');
+	document.getElementsByClassName('reset-button')[0].innerHTML = window.lang.getString('generator.reset_to_default');
+	document.getElementsByClassName('navbar-direction')[0].innerHTML = window.lang.getString('navbar.back');
+	document.getElementById('generateButtonLoading').innerHTML = window.lang.getString('generator.generate_button_loading');
+}
+
+function setSegmentsPreview(segments) {
+	savedSegmentsInfo = segments;
+	setSegmentsPreviewVisible(true);
+}
+
+function setSegmentsPreviewVisible(visible) {
+	if (savedSegmentsInfo == null || savedSegmentsInfo == undefined) {
+		visible = false;
+	}
+	if (visible) {
+		document.getElementById('table.' + segmentKeys[0] + '.description').rowSpan = segmentKeys.length;
+		document.getElementById('table.' + segmentKeys[0] + '.description').innerHTML = '<span>' + savedSegmentsInfo.replaceAll('\n', '<br>') + '</span>';
+		
+		for (var i = 1; i < segmentKeys.length; i++) {
+			document.getElementById('table.' + segmentKeys[i] + '.description').style.display = 'none';
+		}
+	} else {
+		document.getElementById('table.' + segmentKeys[0] + '.description').rowSpan = 1;
+		for (var i = 0; i < segmentKeys.length; i++) {
+			var id = 'table.' + segmentKeys[i] + '.description';
+			document.getElementById(id).style.display = '';
+			document.getElementById(id).innerHTML = window.lang.getString(id);
+		}
+	}
+}
+
+function reset() {
+	for (var elementId of formFields) {
+        localStorage.removeItem(elementId);
+    }
+	
+	window.location.reload(false);
+}
+
+function init() {
+	initForm();
+	
+	const urlParams = new URLSearchParams(window.location.search);
+	var lang = urlParams.get('lang');
+	if (lang == undefined) {
+		lang = 'ru';
+	}
+	
+	window.lang = {
+		values: {},
+		getString: function(key) {
+			var ret = window.lang.values[key];
+			if (key == 'header.title') {
+				return ret + ' ' + calibrator_version;
+			}
+			return ret;
+		}
+	};
+	initLang(lang);
+	
+	setTimeout(function() {
+		if (checkGo != undefined && window.lang != undefined) {
+			checkGo();
+		} else {
+			setTimeout(this, 100);
+		}
+	}, 100);
 }
