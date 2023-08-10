@@ -15,6 +15,7 @@ var (
 	bedX, bedY, zOffset, retractLength, firstLayerLineWidth, lineWidth, layerHeight, initKFactor, endKFactor, segmentHeight                                                 float64
 	firmware, travelSpeed, hotendTemperature, bedTemperature, retractSpeed, cooling, firstLayerPrintSpeed, fastPrintSpeed, slowPrintSpeed, numSegments, numPerimeters, flow int
 	g29, retracted, delta                                                                                                                                                   bool
+	startGcode, endGcode                                                                                                                                                    string
 	// Current variables
 	currentCoordinates Point
 	currentSpeed       int
@@ -37,31 +38,65 @@ func main() {
 
 func registerFunctions() {
 	js.Global().Set("generate", js.FuncOf(generate))
+	js.Global().Set("checkGo", js.FuncOf(checkJs))
+	js.Global().Set("checkSegments", js.FuncOf(checkSegments))
 }
 
-func check() bool {
+func setErrorDescription(doc js.Value, lang js.Value, key string, curErr string, hasErr bool, allowModify bool) {
+	if !allowModify {
+		return
+	}
+	el := doc.Call("getElementById", key)
+	el.Get("style").Set("display", "")
+	el.Set("rowSpan", "1")
+	if hasErr {
+		el.Set("innerHTML", lang.Call("getString", key).String() + "<br><span class=\"inline-error\">" + curErr + "</span>")
+	} else {
+		el.Set("innerHTML", lang.Call("getString", key).String())
+	}
+}
+
+func check(showErrorBox bool, allowModify bool) bool {
 	errorString := ""
 	doc := js.Global().Get("document")
+	lang := js.Global().Get("lang")
 	doc.Call("getElementById", "resultContainer").Set("innerHTML", "")
 
 	// Параметры принтера
+	curErr := ""
+	hasErr := false
+	retErr := false
 
 	docBedX, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_bedX").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: размер оси X\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_size_x.format").String(), true
 	} else if docBedX < 100 || docBedX > 1000 {
-		errorString += "Ошибка значения: размер стола по оси X должен быть от 100 до 1000 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_size_x.small_or_big").String(), true
 	} else {
 		bedX = docBedX
 	}
 
+	setErrorDescription(doc, lang, "table.bed_size_x.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
+	}
+
 	docBedY, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_bedY").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: размер оси Y\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_size_y.format").String(), true
 	} else if docBedY < 100 || docBedY > 1000 {
-		errorString += "Ошибка значения: размер стола по оси Y должен быть от 100 до 1000 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_size_y.small_or_big").String(), true
 	} else {
 		bedY = docBedY
+	}
+	
+	setErrorDescription(doc, lang, "table.bed_size_y.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docMarlin := doc.Call("getElementById", "k3d_la_firmwareMarlin").Get("checked").Bool()
@@ -74,7 +109,7 @@ func check() bool {
 	} else if docRRF {
 		firmware = 2
 	} else {
-		errorString += "Ошибка формата: не выбрана прошивка\n"
+		errorString = errorString + lang.Call("getString", "error.firmware.not_set").String() + "\n"
 	}
 
 	delta = doc.Call("getElementById", "k3d_la_delta").Get("checked").Bool()
@@ -83,185 +118,309 @@ func check() bool {
 
 	docTravelSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_travelSpeed").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость перемещений\n"
+		curErr, hasErr = lang.Call("getString", "error.travel_speed.format").String(), true
 	} else if docTravelSpeed < 10 || docTravelSpeed > 1000 {
-		errorString += "Ошибка значения: скорость перемещений должна быть от 10 до 1000 мм/с\n"
+		curErr, hasErr = lang.Call("getString", "error.travel_speed.slow_or_fast").String(), true
 	} else {
 		travelSpeed = docTravelSpeed
+	}
+	
+	setErrorDescription(doc, lang, "table.travel_speed.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	// Параметры филамента
 
 	docHotTemp, err := parseInputToInt(doc.Call("getElementById", "k3d_la_hotendTemperature").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: температура хотэнда\n"
-	} else if docHotTemp < 150 || docHotTemp > 350 {
-		errorString += "Ошибка значения: температура хотэнда должна быть от 150 до 350 градусов\n"
+		curErr, hasErr = lang.Call("getString", "error.hotend_temp.format").String(), true
+	} else if docHotTemp < 150 {
+		curErr, hasErr = lang.Call("getString", "error.hotend_temp.too_low").String(), true
+	} else if docHotTemp > 350 {
+		curErr, hasErr = lang.Call("getString", "error.hotend_temp.too_high").String(), true
 	} else {
 		hotendTemperature = docHotTemp
+	}
+	
+	setErrorDescription(doc, lang, "table.hotend_temp.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docBedTemp, err := parseInputToInt(doc.Call("getElementById", "k3d_la_bedTemperature").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: температура стола\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_temp.format").String() + err.Error(), true
 	} else if docBedTemp > 150 {
-		errorString += "Ошибка значения: температура стола должна быть от 0 до 150 градусов\n"
+		curErr, hasErr = lang.Call("getString", "error.bed_temp.too_high").String(), true
 	} else {
 		bedTemperature = docBedTemp
+	}
+	
+	setErrorDescription(doc, lang, "table.bed_temp.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docCooling, err := parseInputToInt(doc.Call("getElementById", "k3d_la_cooling").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость вентилятора\n"
-	} else if docCooling < 0 || docCooling > 100 {
-		errorString += "Ошибка значения: скорость вентилятора должна быть от 0 до 100%\n"
+		curErr, hasErr = lang.Call("getString", "error.fan_speed.format").String(), true
 	} else {
-		cooling = int(roundFloat(float64(docCooling)*2.55, 0))
+		docCooling = int(float64(docCooling) * 2.55)
+		if docCooling < 0 {
+			docCooling = 0
+		} else if docCooling > 255 {
+			docCooling = 255
+		}
+		cooling = docCooling
+	}
+	setErrorDescription(doc, lang, "table.fan_speed.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docRetractLength, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_retractLength").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: длина отката\n"
+		curErr, hasErr = lang.Call("getString", "error.retract_length.format").String(), true
 	} else if docRetractLength < 0.1 || docRetractLength > 20 {
-		errorString += "Ошибка значения: длина отката должна быть от 0.1 до 20 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.retract_length.small_or_big").String(), true
 	} else {
 		retractLength = docRetractLength
+	}
+	setErrorDescription(doc, lang, "table.retract_length.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docRetractSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_retractSpeed").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость отката\n"
+		curErr, hasErr = lang.Call("getString", "error.retract_speed.format").String(), true
 	} else if docRetractSpeed < 5 || docRetractSpeed > 150 {
-		errorString += "Ошибка значения: скорость отката должна быть от 5 до 150 мм/с\n"
+		curErr, hasErr = lang.Call("getString", "error.retract_speed.small_or_big").String(), true
 	} else {
 		retractSpeed = docRetractSpeed
 	}
 
 	docFlow, err := parseInputToInt(doc.Call("getElementById", "k3d_la_flow").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: поток\n"
+		curErr, hasErr = lang.Call("getString", "error.flow.format").String(), true
 	} else if docFlow < 50 || docFlow > 150 {
-		errorString += "Ошибка значения: поток должен быть от 50 до 150%\n"
+		curErr, hasErr = lang.Call("getString", "error.flow.low_or_high").String(), true
 	} else {
 		flow = docFlow
+	}
+	setErrorDescription(doc, lang, "table.flow.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	// Параметры первого слоя
 
 	docFirstLayerLineWidth, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_firstLayerLineWidth").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: ширина линии первого слоя\n"
+		curErr, hasErr = lang.Call("getString", "error.first_line_width.format").String(), true
 	} else if docFirstLayerLineWidth < 0.1 || docFirstLayerLineWidth > 2.0 {
-		errorString += "Ошибка значения: ширина линии первого слоя должна быть от 0.1 до 2.0 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.first_line_width.small_or_big").String(), true
 	} else {
 		firstLayerLineWidth = docFirstLayerLineWidth
+	}
+	setErrorDescription(doc, lang, "table.first_line_width.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docFirstLayerPrintSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_firstLayerSpeed").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость печати первого слоя\n"
+		curErr, hasErr = lang.Call("getString", "error.first_print_speed.format").String(), true
 	} else if docFirstLayerPrintSpeed < 10 || docFirstLayerPrintSpeed > 1000 {
-		errorString += "Ошибка значения: скорость печати первого слоя должна быть от 10 до 1000 мм/с\n"
+		curErr, hasErr = lang.Call("getString", "error.first_print_speed.slow_or_fast").String(), true
 	} else {
 		firstLayerPrintSpeed = docFirstLayerPrintSpeed
+	}
+	setErrorDescription(doc, lang, "table.first_print_speed.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docZOffset, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_zOffset").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: Z-Offset\n"
+		curErr, hasErr = lang.Call("getString", "error.z_offset.format").String(), true
 	} else if docZOffset < -0.5 || docZOffset > 0.5 {
-		errorString += "Ошибка значения: Z-Offset должен быть от -0.5 до 0.5 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.z_offset.small_or_big").String(), true
 	} else {
 		zOffset = docZOffset
+	}
+	setErrorDescription(doc, lang, "table.z_offset.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	// Параметры модели
 
 	docNumPerimeters, err := parseInputToInt(doc.Call("getElementById", "k3d_la_numPerimeters").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: количество периметров\n"
+		curErr, hasErr = lang.Call("getString", "error.num_perimeters.format").String(), true
 	} else if docNumPerimeters < 1 || docNumPerimeters > 5 {
-		errorString += "Ошибка значения: количество периметров должно быть от 1 до 5\n"
+		curErr, hasErr = lang.Call("getString", "error.num_perimeters.small_or_big").String(), true
 	} else {
 		numPerimeters = docNumPerimeters
+	}
+	setErrorDescription(doc, lang, "table.num_perimeters.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docLineWidth, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_lineWidth").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: ширина линии\n"
+		curErr, hasErr = lang.Call("getString", "error.line_width.format").String(), true
 	} else if docLineWidth < 0.1 || docLineWidth > 2.0 {
-		errorString += "Ошибка значения: ширина линии должна быть от 0.1 до 2.0 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.line_width.small_or_big").String(), true
 	} else {
 		lineWidth = docLineWidth
+	}
+	setErrorDescription(doc, lang, "table.line_width.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docLayerHeight, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_layerHeight").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: толщина слоя\n"
+		curErr, hasErr = lang.Call("getString", "error.layer_height.format").String(), true
 	} else if docLayerHeight < 0.05 || docLayerHeight > 1.2 {
-		errorString += "Ошибка значения: толщина слоя должна быть от 0.05 до 1.2 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.layer_height.small_or_big").String(), true
 	} else {
 		layerHeight = docLayerHeight
+	}
+	setErrorDescription(doc, lang, "table.layer_height.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docFastPrintSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_fastPrintSpeed").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость печати быстрых участков\n"
+		curErr, hasErr = lang.Call("getString", "error.fast_segment_speed.format").String(), true
 	} else if docFastPrintSpeed < 10 || docFastPrintSpeed > 1000 {
-		errorString += "Ошибка значения: скорость печати быстрых участков должна быть от 10 до 1000 мм/с\n"
+		curErr, hasErr = lang.Call("getString", "error.fast_segment_speed.small_or_big").String(), true
 	} else {
 		fastPrintSpeed = docFastPrintSpeed
+	}
+	setErrorDescription(doc, lang, "table.fast_segment_speed.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docSlowPrintSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_slowPrintSpeed").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: скорость печати медленных участков\n"
+		curErr, hasErr = lang.Call("getString", "error.slow_segment_speed.format").String(), true
 	} else if docSlowPrintSpeed < 10 || docSlowPrintSpeed > 1000 {
-		errorString += "Ошибка значения: скорость печати медленных участков должна быть от 10 до 1000 мм/с\n"
+		curErr, hasErr = lang.Call("getString", "error.slow_segment_speed.small_or_big").String(), true
 	} else {
 		slowPrintSpeed = docSlowPrintSpeed
+	}
+	setErrorDescription(doc, lang, "table.slow_segment_speed.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	// Параметры калибровки
 
 	docInitKFactor, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_initKFactor").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: начальное значение коэффициента LA\n"
+		curErr, hasErr = lang.Call("getString", "error.init_la.format").String(), true
 	} else if docInitKFactor < 0.0 || docInitKFactor > 2.0 {
-		errorString += "Ошибка значения: начальное значение коэффициента LA должно быть от 0.0 до 2.0\n"
+		curErr, hasErr = lang.Call("getString", "error.init_la.small_or_big").String(), true
 	} else {
 		initKFactor = docInitKFactor
+	}
+	setErrorDescription(doc, lang, "table.init_la.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docEndKFactor, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_endKFactor").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: конечное значение коэффициента LA\n"
+		curErr, hasErr = lang.Call("getString", "error.end_la.format").String(), true
 	} else if docEndKFactor < 0.0 || docEndKFactor > 2.0 {
-		errorString += "Ошибка значения: конечное значение коэффициента LA должно быть от 0.0 до 2.0\n"
+		curErr, hasErr = lang.Call("getString", "error.end_la.small_or_big").String(), true
 	} else {
 		endKFactor = docEndKFactor
+	}
+	setErrorDescription(doc, lang, "table.end_la.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docNumSegment, err := parseInputToInt(doc.Call("getElementById", "k3d_la_numSegments").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: количество сегментов\n"
+		curErr, hasErr = lang.Call("getString", "error.num_segments.format").String(), true
 	} else if docNumSegment < 2 || docNumSegment > 100 {
-		errorString += "Ошибка значения: количество сегментов должно быть от 2 до 100\n"
+		curErr, hasErr = lang.Call("getString", "error.num_segments.small_or_big").String(), true
 	} else {
 		numSegments = docNumSegment
+	}
+	setErrorDescription(doc, lang, "table.num_segments.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
 	}
 
 	docSegmentHeight, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_segmentHeight").Get("value").String())
 	if err != nil {
-		errorString += "Ошибка формата: высота сегмента\n"
+		curErr, hasErr = lang.Call("getString", "error.segment_height.format").String(), true
 	} else if docSegmentHeight < 0.5 || docSegmentHeight > 10.0 {
-		errorString += "Ошибка значения: высота сегмента должна быть от 0.5 до 10.0 мм\n"
+		curErr, hasErr = lang.Call("getString", "error.segment_height.small_or_big").String(), true
 	} else {
 		segmentHeight = docSegmentHeight
 	}
+	setErrorDescription(doc, lang, "table.segment_height.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
+	}
+
+	startGcode = doc.Call("getElementById", "k3d_la_startGcode").Get("value").String()
+	endGcode = doc.Call("getElementById", "k3d_la_endGcode").Get("value").String()
+	
+	if !showErrorBox {
+		return !retErr
+	}
 
 	// end check of parameters
-	if errorString == "" {
+	if !retErr {
 		println("OK")
 		return true
 	} else {
@@ -271,13 +430,49 @@ func check() bool {
 	}
 }
 
+func write(str ...string) {
+	for i := 0; i < len(str); i++ {
+		js.Global().Call("writeToFile", str[i])
+	}
+}
+
+func checkSegments(this js.Value, i []js.Value) interface{} {
+	if (check(false, false)) {
+		lang := js.Global().Get("lang")
+		segmentStr := lang.Call("getString", "generator.segment").String()
+		
+		deltaKFactor := math.Abs((endKFactor - initKFactor) / float64(numSegments-1))
+		maxKFactor := math.Max(initKFactor, endKFactor)
+		
+		// generate calibration parameters
+		caliParams := ""
+		for i := 0; i < numSegments; i++ {
+			caliParams += fmt.Sprintf(segmentStr, numSegments-i, fmt.Sprint(roundFloat(maxKFactor-deltaKFactor*float64(i), 3)))
+		}
+		
+		js.Global().Call("setSegmentsPreview", caliParams)
+	} else {
+		js.Global().Call("setSegmentsPreview", js.ValueOf(nil))
+		check(false, true)
+	}
+	return js.ValueOf(nil)
+}
+
+func checkJs(this js.Value, i []js.Value) interface{} {
+	check(false, true)
+	return js.ValueOf(nil)
+}
+
 func generate(this js.Value, i []js.Value) interface{} {
 	// check and initialize variables
-	if !check() {
+	if !check(true, false) {
 		return js.ValueOf(nil)
 	}
 
 	// generate calibration parameters
+	lang := js.Global().Get("lang")
+	segmentStr := lang.Call("getString", "generator.segment").String()
+	
 	caliParams := ""
 	deltaKFactor := math.Abs((endKFactor - initKFactor) / float64(numSegments-1))
 	maxKFactor := math.Max(initKFactor, endKFactor)
@@ -285,16 +480,18 @@ func generate(this js.Value, i []js.Value) interface{} {
 	currentKFactor := minKFactor
 	caliParams += "; ====================\n; Поддержите выход новых калибраторов, инструкций и видео!\n; Пожертвование из РФ: https://donate.stream/dmitrysorkin\n; Пожертвование из-за рубежа: https://www.donationalerts.com/r/dsorkin\n; ====================\n"
 	for i := 0; i < numSegments; i++ {
-		caliParams += fmt.Sprintf("; Segment:%d K-Factor:%s\n", numSegments-i, fmt.Sprint(roundFloat(maxKFactor-deltaKFactor*float64(i), 3)))
+		caliParams += fmt.Sprintf(segmentStr, numSegments-i, fmt.Sprint(roundFloat(maxKFactor-deltaKFactor*float64(i), 3)))
 	}
+	
+	fileName := fmt.Sprintf("K3D_LA_H%d-B%d_%s-%s_d%s.gcode", hotendTemperature, bedTemperature, fmt.Sprint(roundFloat(initKFactor, 2)), fmt.Sprint(roundFloat(endKFactor, 2)), fmt.Sprint(roundFloat(deltaKFactor, 3)))
+	js.Global().Call("beginSaveFile", fileName)
 
 	// gcode initialization
-	gcode := make([]string, 0, 1)
-	gcode = append(gcode, "; generated by K3D LA calibration ",
-		caliVersion, "\n",
+	write("; generated by K3D LA calibration ",
+		js.Global().Get("calibrator_version").String(),
+		"\n",
 		"; Written by Dmitry Sorkin @ http://k3d.tech/\n",
 		"; and Kekht\n",
-		caliParams,
 		fmt.Sprintf("; Bedsize: %s:%s\n", fmt.Sprint(roundFloat(bedX, 0)), fmt.Sprint(roundFloat(bedY, 0))),
 		fmt.Sprintf("; Temperature H:%d B:%d °C\n", hotendTemperature, bedTemperature),
 		fmt.Sprintf("; Line width: %s-%s mm\n", fmt.Sprint(roundFloat(lineWidth, 2)), fmt.Sprint(roundFloat(firstLayerLineWidth, 2))),
@@ -302,19 +499,19 @@ func generate(this js.Value, i []js.Value) interface{} {
 		fmt.Sprintf("; Segments: %dx%s mm\n", numSegments, fmt.Sprint(roundFloat(segmentHeight, 2))),
 		fmt.Sprintf("; Print speed: %d, %d, %d mm/s\n", firstLayerPrintSpeed, slowPrintSpeed, fastPrintSpeed),
 		fmt.Sprintf("; Retractions: %smm @ %d mm/s\n", fmt.Sprint(roundFloat(retractLength, 2)), retractSpeed),
-		"M104 S150\n",
-		fmt.Sprintf("M190 S%d\n", bedTemperature),
-		fmt.Sprintf("M109 S%d\n", hotendTemperature),
-		generateLACommand(currentKFactor),
-		"G28\n")
+		caliParams,
+		generateLACommand(currentKFactor))
+	
+	var g29str string
 	if g29 {
-		gcode = append(gcode, "G29\n")
+		g29str = "G29"
+	} else {
+		g29str = ""
 	}
-	gcode = append(gcode, "G92 E0\n",
-		"G90\n",
-		"M82\n",
-		"M106 S0\n",
-		fmt.Sprintf("M221 S%d\n", flow))
+	replacer := strings.NewReplacer("$BEDTEMP", strconv.Itoa(bedTemperature), "$HOTTEMP", strconv.Itoa(hotendTemperature), "$G29", g29str, "$FLOW", strconv.Itoa(flow))
+	write(replacer.Replace(startGcode), "\n")
+	
+	write("M82\n", "M106 S0")
 
 	// generate first layer
 	var bedCenter Point
@@ -328,10 +525,10 @@ func generate(this js.Value, i []js.Value) interface{} {
 	currentCoordinates.X, currentCoordinates.Y, currentCoordinates.Z = 0, 0, 0
 
 	// move to layer height to avoid nozzle striking at bed
-	gcode = append(gcode, fmt.Sprintf("G1 Z%s\n", fmt.Sprint(roundFloat(layerHeight+zOffset, 2))))
+	write(fmt.Sprintf("G1 Z%s\n", fmt.Sprint(roundFloat(layerHeight+zOffset, 2))))
 
 	// make printer think, that he is on layerHeight
-	gcode = append(gcode, fmt.Sprintf("G92 Z%s\n", fmt.Sprint(roundFloat(layerHeight, 2))))
+	write(fmt.Sprintf("G92 Z%s\n", fmt.Sprint(roundFloat(layerHeight, 2))))
 	currentCoordinates.Z = layerHeight
 
 	// purge nozzle
@@ -346,42 +543,42 @@ func generate(this js.Value, i []js.Value) interface{} {
 	purgeEnd.X = purgeStart.X
 
 	// move to start of purge
-	gcode = append(gcode, generateMove(currentCoordinates, purgeStart, 0.0, travelSpeed)...)
+	write(generateMove(currentCoordinates, purgeStart, 0.0, travelSpeed)...)
 
 	// add purge to gcode
-	gcode = append(gcode, generateMove(currentCoordinates, purgeTwo, firstLayerLineWidth, firstLayerPrintSpeed)...)
-	gcode = append(gcode, generateMove(currentCoordinates, purgeThree, firstLayerLineWidth, firstLayerPrintSpeed)...)
-	gcode = append(gcode, generateMove(currentCoordinates, purgeEnd, firstLayerLineWidth, firstLayerPrintSpeed)...)
+	write(generateMove(currentCoordinates, purgeTwo, firstLayerLineWidth, firstLayerPrintSpeed)...)
+	write(generateMove(currentCoordinates, purgeThree, firstLayerLineWidth, firstLayerPrintSpeed)...)
+	write(generateMove(currentCoordinates, purgeEnd, firstLayerLineWidth, firstLayerPrintSpeed)...)
 
 	// generate raft trajectory
 	trajectory := generateZigZagTrajectory(bedCenter, firstLayerLineWidth, modelWidth+10.0)
 
 	// move to start of raft
-	gcode = append(gcode, generateRetraction())
-	gcode = append(gcode, generateMove(currentCoordinates, trajectory[0], 0.0, travelSpeed)...)
-	gcode = append(gcode, generateDeretraction())
+	write(generateRetraction())
+	write(generateMove(currentCoordinates, trajectory[0], 0.0, travelSpeed)...)
+	write(generateDeretraction())
 
 	// print raft
 	for i := 1; i < len(trajectory); i++ {
-		gcode = append(gcode, generateMove(currentCoordinates, trajectory[i], firstLayerLineWidth, firstLayerPrintSpeed)...)
+		write(generateMove(currentCoordinates, trajectory[i], firstLayerLineWidth, firstLayerPrintSpeed)...)
 	}
 
 	// generate model
 	layersPerSegment := int(segmentHeight / layerHeight)
 	for i := 1; i < numSegments*layersPerSegment; i++ {
 		// add layer start comment
-		gcode = append(gcode, fmt.Sprintf(";layer #%s\n", fmt.Sprint(roundFloat(currentCoordinates.Z/layerHeight, 0))))
+		write(fmt.Sprintf(";layer #%s\n", fmt.Sprint(roundFloat(currentCoordinates.Z/layerHeight, 0))))
 
 		// change fan speed
 		if i < 4 {
-			gcode = append(gcode, fmt.Sprintf("M106 S%s\n", fmt.Sprint(roundFloat(float64(cooling*i/3), 0))))
+			write(fmt.Sprintf("M106 S%s\n", fmt.Sprint(roundFloat(float64(cooling*i/3), 0))))
 		}
 
 		// modify print settings if switching segments
 		addition := 0.0
 		if i%layersPerSegment == 0 {
 			currentKFactor += deltaKFactor
-			gcode = append(gcode, generateLACommand(currentKFactor))
+			write(generateLACommand(currentKFactor))
 			addition = lineWidth / 2
 		} else {
 			addition = 0
@@ -395,7 +592,7 @@ func generate(this js.Value, i []js.Value) interface{} {
 			layerStart.Y += (modelWidth - lineWidth) / 2
 		}
 		layerStart.Z = currentCoordinates.Z + layerHeight
-		gcode = append(gcode, generateMove(currentCoordinates, layerStart, 0.0, travelSpeed)...)
+		write(generateMove(currentCoordinates, layerStart, 0.0, travelSpeed)...)
 		currentCoordinates.Z = layerStart.Z
 		// generate layer gcode
 		for j := 0; j < numPerimeters; j++ {
@@ -408,47 +605,41 @@ func generate(this js.Value, i []js.Value) interface{} {
 			leftShortLine := 0.2
 			leftLongLine := (currentModelWidth - leftShortLine) / 2
 			// print back line's right part
-			gcode = append(gcode, generateRelativeMove(currentModelWidth/2, 0, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(currentModelWidth/2, 0, 0, lineWidth, fastPrintSpeed)...)
 			// print right line
-			gcode = append(gcode, generateRelativeMove(0, -rightLongLine, 0, lineWidth, fastPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(0, -rightShortLine, 0, lineWidth, slowPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(0, -rightLongLine, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(0, -rightLongLine, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(0, -rightShortLine, 0, lineWidth, slowPrintSpeed)...)
+			write(generateRelativeMove(0, -rightLongLine, 0, lineWidth, fastPrintSpeed)...)
 			// print front line
-			gcode = append(gcode, generateRelativeMove(-frontLongLine, 0, 0, lineWidth, fastPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(-frontShortLine, 0, 0, lineWidth, slowPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(-frontLongLine, 0, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(-frontLongLine, 0, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(-frontShortLine, 0, 0, lineWidth, slowPrintSpeed)...)
+			write(generateRelativeMove(-frontLongLine, 0, 0, lineWidth, fastPrintSpeed)...)
 			// print left line
-			gcode = append(gcode, generateRelativeMove(0, leftLongLine, 0, lineWidth, fastPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(0, leftShortLine, 0, lineWidth, slowPrintSpeed)...)
-			gcode = append(gcode, generateRelativeMove(0, leftLongLine, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(0, leftLongLine, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(0, leftShortLine, 0, lineWidth, slowPrintSpeed)...)
+			write(generateRelativeMove(0, leftLongLine, 0, lineWidth, fastPrintSpeed)...)
 			// print back line left part
-			gcode = append(gcode, generateRelativeMove(currentModelWidth/2, 0, 0, lineWidth, fastPrintSpeed)...)
+			write(generateRelativeMove(currentModelWidth/2, 0, 0, lineWidth, fastPrintSpeed)...)
 			// move to start of next perimeter if it exists
 			if j != numPerimeters-1 {
-				gcode = append(gcode, generateRelativeMove(0, -lineWidth, 0, 0.0, fastPrintSpeed)...)
+				write(generateRelativeMove(0, -lineWidth, 0, 0.0, fastPrintSpeed)...)
 			}
 		}
 	}
 
 	// end gcode
-	gcode = append(gcode, ";end gcode\n",
+	write(";end gcode\n",
 		"M104 S0\n",
 		"M140 S0\n",
 		"M106 S0\n",
 		fmt.Sprintf("G1 Z%f F600\n", currentCoordinates.Z+5),
 		"M84")
 
-	outputGCode := ""
-	for i := 0; i < len(gcode); i++ {
-		outputGCode += gcode[i]
-	}
-
 	// write calibration parameters to resultContainer
 	js.Global().Call("showError", caliParams)
 
 	// save file
-	fileName := fmt.Sprintf("K3D_LA_H%d-B%d_%s-%s_d%s.gcode", hotendTemperature, bedTemperature, fmt.Sprint(roundFloat(initKFactor, 2)), fmt.Sprint(roundFloat(endKFactor, 2)), fmt.Sprint(roundFloat(deltaKFactor, 3)))
-	js.Global().Call("saveTextAsFile", fileName, outputGCode)
+	js.Global().Call("finishFile")
 
 	return js.ValueOf(nil)
 }
