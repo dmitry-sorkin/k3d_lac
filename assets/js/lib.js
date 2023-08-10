@@ -1,4 +1,4 @@
-const calibrator_version = 'v1.3';
+const calibrator_version = 'v1.4';
 window.calibrator_version = calibrator_version;
 var savedSegmentsInfo = null;
 
@@ -92,8 +92,6 @@ var formFields = [
     "k3d_la_travelSpeed",
     "k3d_la_hotendTemperature",
     "k3d_la_bedTemperature",
-    "k3d_la_retractLength",
-    "k3d_la_retractSpeed",
     "k3d_la_cooling",
     "k3d_la_flow",
     "k3d_la_firstLayerLineWidth",
@@ -223,10 +221,6 @@ function initLang(key) {
 			values['table.bed_temp.description'] = '[°C] The temperature to which the bed must be heated before printing. The bed will heat up until parking and auto-calibration.';
 			values['table.fan_speed.title'] = 'Fan speed';
 			values['table.fan_speed.description'] = '[%] Fan speed in percent. In order for the temperature of the hot end not to drop sharply when the fan is turned on, the airflow will be turned off on the 1st layer. On layers 2-4, the fan speed will increase in steps to the specified value';
-			values['table.retract_length.title'] = 'Retraction length';
-			values['table.retract_length.description'] = '[mm] The length that the bar will retract to prevent plastic from leaking when moving. If you don\'t know, set 1.0 for direct extruder and 6.0 for bowden extruder';
-			values['table.retract_speed.title'] = 'Retraction speed';
-			values['table.retract_speed.description'] = '[mm/s] The speed at which the rollback will be performed. If you do not know, then put 25';
 			values['table.flow.title'] = 'Flow';
 			values['table.flow.description'] = '[%] Flow in percents. Needed to compensate for over- or under-extrusion';
 			values['table.first_line_width.title'] = 'First layer line width';
@@ -295,10 +289,6 @@ function initLang(key) {
 			values['error.flow.format'] = 'Flow - format error';
 			values['error.flow.low_or_high'] = 'Value error: flow should be from 50 to 150%';
 			values['error.firmware.not_set'] = 'Format error: firmware not set';
-			values['error.retract_length.format'] = 'Retraction length - format error';
-			values['error.retract_length.small_or_big'] = 'Retraction length is incorrect (less than 0.1 or greater than 20 mm)';
-			values['error.retract_speed.format'] = 'Retraction speed - format error';
-			values['error.retract_speed.small_or_big'] = 'Retraction speed is incorrect (less than 5 or greater than 150 mm/s)';
 			values['error.num_perimeters.format'] = 'Number of perimeters - format error';
 			values['error.num_perimeters.small_or_big'] = 'Value error: number of perimeters must be between 1 and 5';
 			values['error.fast_segment_speed.format'] = 'Speed of fast sections - format Error';
@@ -339,10 +329,6 @@ function initLang(key) {
 			values['table.bed_temp.description'] = '[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и автокалибровки стола';
 			values['table.fan_speed.title'] = 'Скорость вентилятора';
 			values['table.fan_speed.description'] = '[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении вентилятора, на 1 слое обдув будет выключен. На 2-4 слоях скорость вращения вентиляторов будет ступенчато увелиичиваться до указанного значения';
-			values['table.retract_length.title'] = 'Длина отката';
-			values['table.retract_length.description'] = '[мм] Длина, на которую будет втягиваться пруток для предотвращения подтекания пластика при перемещениях. Если не знаете, то для директ экструдера поставьте 1.0, а для боуден экструдера 6.0';
-			values['table.retract_speed.title'] = 'Скорость отката';
-			values['table.retract_speed.description'] = '[мм/с] Скорость, с которой будет производиться откат. Если не знаете, то поставьте 25';
 			values['table.flow.title'] = 'Поток';
 			values['table.flow.description'] = '[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии';
 			values['table.first_line_width.title'] = 'Ширина линии первого слоя';
@@ -411,10 +397,6 @@ function initLang(key) {
 			values['error.flow.format'] = 'Поток - ошибка формата';
 			values['error.flow.low_or_high'] = 'Ошибка значения: поток должен быть от 50 до 150%';
 			values['error.firmware.not_set'] = 'Ошибка формата: не выбрана прошивка';
-			values['error.retract_length.format'] = 'Длина отката - ошибка формата';
-			values['error.retract_length.small_or_big'] = 'Длина отката неправильная (меньше 0.1 или больше 20 мм)';
-			values['error.retract_speed.format'] = 'Скорость отката - ошибка формата';
-			values['error.retract_speed.small_or_big'] = 'Скорость отката неправильная (меньше 5 или больше 150 мм/с)';
 			values['error.num_perimeters.format'] = 'Количество периметров - ошибка формата';
 			values['error.num_perimeters.small_or_big'] = 'Ошибка значения: количество периметров должно быть от 1 до 5';
 			values['error.fast_segment_speed.format'] = 'Скорость печати быстрых участков - ошибка формата';

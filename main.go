@@ -14,7 +14,7 @@ var (
 	// Variables from web interface
 	bedX, bedY, zOffset, retractLength, firstLayerLineWidth, lineWidth, layerHeight, initKFactor, endKFactor, segmentHeight                                                 float64
 	firmware, travelSpeed, hotendTemperature, bedTemperature, retractSpeed, cooling, firstLayerPrintSpeed, fastPrintSpeed, slowPrintSpeed, numSegments, numPerimeters, flow int
-	g29, retracted, delta                                                                                                                                                   bool
+	bedProbe, retracted, delta                                                                                                                                              bool
 	startGcode, endGcode                                                                                                                                                    string
 	// Current variables
 	currentCoordinates Point
@@ -22,7 +22,7 @@ var (
 	currentE           float64
 )
 
-const caliVersion = "v1.2"
+const caliVersion = "v1.3"
 
 type Point struct {
 	X float64
@@ -50,7 +50,7 @@ func setErrorDescription(doc js.Value, lang js.Value, key string, curErr string,
 	el.Get("style").Set("display", "")
 	el.Set("rowSpan", "1")
 	if hasErr {
-		el.Set("innerHTML", lang.Call("getString", key).String() + "<br><span class=\"inline-error\">" + curErr + "</span>")
+		el.Set("innerHTML", lang.Call("getString", key).String()+"<br><span class=\"inline-error\">"+curErr+"</span>")
 	} else {
 		el.Set("innerHTML", lang.Call("getString", key).String())
 	}
@@ -91,7 +91,7 @@ func check(showErrorBox bool, allowModify bool) bool {
 	} else {
 		bedY = docBedY
 	}
-	
+
 	setErrorDescription(doc, lang, "table.bed_size_y.description", curErr, hasErr, allowModify)
 	if hasErr {
 		errorString = errorString + curErr + "\n"
@@ -114,7 +114,7 @@ func check(showErrorBox bool, allowModify bool) bool {
 
 	delta = doc.Call("getElementById", "k3d_la_delta").Get("checked").Bool()
 
-	g29 = doc.Call("getElementById", "k3d_la_g29").Get("checked").Bool()
+	bedProbe = doc.Call("getElementById", "k3d_la_g29").Get("checked").Bool()
 
 	docTravelSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_travelSpeed").Get("value").String())
 	if err != nil {
@@ -124,7 +124,7 @@ func check(showErrorBox bool, allowModify bool) bool {
 	} else {
 		travelSpeed = docTravelSpeed
 	}
-	
+
 	setErrorDescription(doc, lang, "table.travel_speed.description", curErr, hasErr, allowModify)
 	if hasErr {
 		errorString = errorString + curErr + "\n"
@@ -144,7 +144,7 @@ func check(showErrorBox bool, allowModify bool) bool {
 	} else {
 		hotendTemperature = docHotTemp
 	}
-	
+
 	setErrorDescription(doc, lang, "table.hotend_temp.description", curErr, hasErr, allowModify)
 	if hasErr {
 		errorString = errorString + curErr + "\n"
@@ -154,13 +154,13 @@ func check(showErrorBox bool, allowModify bool) bool {
 
 	docBedTemp, err := parseInputToInt(doc.Call("getElementById", "k3d_la_bedTemperature").Get("value").String())
 	if err != nil {
-		curErr, hasErr = lang.Call("getString", "error.bed_temp.format").String() + err.Error(), true
+		curErr, hasErr = lang.Call("getString", "error.bed_temp.format").String()+err.Error(), true
 	} else if docBedTemp > 150 {
 		curErr, hasErr = lang.Call("getString", "error.bed_temp.too_high").String(), true
 	} else {
 		bedTemperature = docBedTemp
 	}
-	
+
 	setErrorDescription(doc, lang, "table.bed_temp.description", curErr, hasErr, allowModify)
 	if hasErr {
 		errorString = errorString + curErr + "\n"
@@ -187,29 +187,9 @@ func check(showErrorBox bool, allowModify bool) bool {
 		retErr = true
 	}
 
-	docRetractLength, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_retractLength").Get("value").String())
-	if err != nil {
-		curErr, hasErr = lang.Call("getString", "error.retract_length.format").String(), true
-	} else if docRetractLength < 0.1 || docRetractLength > 20 {
-		curErr, hasErr = lang.Call("getString", "error.retract_length.small_or_big").String(), true
-	} else {
-		retractLength = docRetractLength
-	}
-	setErrorDescription(doc, lang, "table.retract_length.description", curErr, hasErr, allowModify)
-	if hasErr {
-		errorString = errorString + curErr + "\n"
-		hasErr = false
-		retErr = true
-	}
+	retractLength = 1.0
 
-	docRetractSpeed, err := parseInputToInt(doc.Call("getElementById", "k3d_la_retractSpeed").Get("value").String())
-	if err != nil {
-		curErr, hasErr = lang.Call("getString", "error.retract_speed.format").String(), true
-	} else if docRetractSpeed < 5 || docRetractSpeed > 150 {
-		curErr, hasErr = lang.Call("getString", "error.retract_speed.small_or_big").String(), true
-	} else {
-		retractSpeed = docRetractSpeed
-	}
+	retractSpeed = 30.0
 
 	docFlow, err := parseInputToInt(doc.Call("getElementById", "k3d_la_flow").Get("value").String())
 	if err != nil {
@@ -414,7 +394,7 @@ func check(showErrorBox bool, allowModify bool) bool {
 
 	startGcode = doc.Call("getElementById", "k3d_la_startGcode").Get("value").String()
 	endGcode = doc.Call("getElementById", "k3d_la_endGcode").Get("value").String()
-	
+
 	if !showErrorBox {
 		return !retErr
 	}
@@ -437,19 +417,19 @@ func write(str ...string) {
 }
 
 func checkSegments(this js.Value, i []js.Value) interface{} {
-	if (check(false, false)) {
+	if check(false, false) {
 		lang := js.Global().Get("lang")
 		segmentStr := lang.Call("getString", "generator.segment").String()
-		
+
 		deltaKFactor := math.Abs((endKFactor - initKFactor) / float64(numSegments-1))
 		maxKFactor := math.Max(initKFactor, endKFactor)
-		
+
 		// generate calibration parameters
 		caliParams := ""
 		for i := 0; i < numSegments; i++ {
 			caliParams += fmt.Sprintf(segmentStr, numSegments-i, fmt.Sprint(roundFloat(maxKFactor-deltaKFactor*float64(i), 3)))
 		}
-		
+
 		js.Global().Call("setSegmentsPreview", caliParams)
 	} else {
 		js.Global().Call("setSegmentsPreview", js.ValueOf(nil))
@@ -472,46 +452,51 @@ func generate(this js.Value, i []js.Value) interface{} {
 	// generate calibration parameters
 	lang := js.Global().Get("lang")
 	segmentStr := lang.Call("getString", "generator.segment").String()
-	
+
 	caliParams := ""
 	deltaKFactor := math.Abs((endKFactor - initKFactor) / float64(numSegments-1))
 	maxKFactor := math.Max(initKFactor, endKFactor)
 	minKFactor := math.Min(initKFactor, endKFactor)
 	currentKFactor := minKFactor
-	caliParams += "; ====================\n; Поддержите выход новых калибраторов, инструкций и видео!\n; Пожертвование из РФ: https://donate.stream/dmitrysorkin\n; Пожертвование из-за рубежа: https://www.donationalerts.com/r/dsorkin\n; ====================\n"
+	caliParams += "; ====================\n; Поддержите выход новых калибраторов, инструкций и видео!\n;https://donate.stream/dmitrysorkin\n; ====================\n"
 	for i := 0; i < numSegments; i++ {
 		caliParams += fmt.Sprintf(segmentStr, numSegments-i, fmt.Sprint(roundFloat(maxKFactor-deltaKFactor*float64(i), 3)))
 	}
-	
+
 	fileName := fmt.Sprintf("K3D_LA_H%d-B%d_%s-%s_d%s.gcode", hotendTemperature, bedTemperature, fmt.Sprint(roundFloat(initKFactor, 2)), fmt.Sprint(roundFloat(endKFactor, 2)), fmt.Sprint(roundFloat(deltaKFactor, 3)))
 	js.Global().Call("beginSaveFile", fileName)
 
 	// gcode initialization
-	write("; generated by K3D LA calibration ",
-		js.Global().Get("calibrator_version").String(),
-		"\n",
-		"; Written by Dmitry Sorkin @ http://k3d.tech/\n",
-		"; and Kekht\n",
-		fmt.Sprintf("; Bedsize: %s:%s\n", fmt.Sprint(roundFloat(bedX, 0)), fmt.Sprint(roundFloat(bedY, 0))),
-		fmt.Sprintf("; Temperature H:%d B:%d °C\n", hotendTemperature, bedTemperature),
-		fmt.Sprintf("; Line width: %s-%s mm\n", fmt.Sprint(roundFloat(lineWidth, 2)), fmt.Sprint(roundFloat(firstLayerLineWidth, 2))),
-		fmt.Sprintf("; Layer height: %s mm\n", fmt.Sprint(roundFloat(layerHeight, 2))),
-		fmt.Sprintf("; Segments: %dx%s mm\n", numSegments, fmt.Sprint(roundFloat(segmentHeight, 2))),
-		fmt.Sprintf("; Print speed: %d, %d, %d mm/s\n", firstLayerPrintSpeed, slowPrintSpeed, fastPrintSpeed),
-		fmt.Sprintf("; Retractions: %smm @ %d mm/s\n", fmt.Sprint(roundFloat(retractLength, 2)), retractSpeed),
-		caliParams,
-		generateLACommand(currentKFactor))
-	
+	write("; generated by K3D LA calibration ", js.Global().Get("calibrator_version").String(), "\n",
+		"; Written by Dmitry Sorkin @ http://k3d.tech/, Kekht and YTKAB0BP\n",
+		fmt.Sprintf(";Bedsize: %s:%s [mm]\n", fmt.Sprint(roundFloat(bedX, 1)), fmt.Sprint(roundFloat(bedY, 1))),
+		fmt.Sprintf(";Firmware (0-Marlin, 1-Klipper, 2-RRF): %d\n", firmware),
+		fmt.Sprintf(";Z-offset: %s [mm]\n", fmt.Sprint(roundFloat(zOffset, 3))),
+		fmt.Sprintf(";Delta: %s\n", strconv.FormatBool(delta)),
+		fmt.Sprintf(";G29: %s\n", strconv.FormatBool(bedProbe)),
+		fmt.Sprintf(";Temp: %d/%d [°C]\n", hotendTemperature, bedTemperature),
+		fmt.Sprintf(";Flow: %d\n", flow),
+		fmt.Sprintf(";Fan: %s\n", fmt.Sprint(roundFloat(float64(cooling)/2.55, 1))),
+		fmt.Sprintf(";Line width: %s [mm]\n", fmt.Sprint(roundFloat(lineWidth, 2))),
+		fmt.Sprintf(";First layer line width: %s [mm]\n", fmt.Sprint(roundFloat(lineWidth, 2))),
+		fmt.Sprintf(";Layer height: %s [mm]\n", fmt.Sprint(roundFloat(layerHeight, 2))),
+		fmt.Sprintf(";Fast print speed: %d [mm/s]\n", fastPrintSpeed),
+		fmt.Sprintf(";Slow print speed: %d [mm/s]\n", slowPrintSpeed),
+		fmt.Sprintf(";First layer print speed: %d [mm/s]\n", firstLayerPrintSpeed),
+		fmt.Sprintf(";Travel speed: %d [mm/s]\n", travelSpeed),
+		fmt.Sprintf(";Segment height: %s [mm]\n", fmt.Sprint(roundFloat(segmentHeight, 2))),
+		caliParams)
+
 	var g29str string
-	if g29 {
+	if bedProbe {
 		g29str = "G29"
 	} else {
 		g29str = ""
 	}
 	replacer := strings.NewReplacer("$BEDTEMP", strconv.Itoa(bedTemperature), "$HOTTEMP", strconv.Itoa(hotendTemperature), "$G29", g29str, "$FLOW", strconv.Itoa(flow))
 	write(replacer.Replace(startGcode), "\n")
-	
-	write("M82\n", "M106 S0")
+
+	write("M82\n", "M106 S0\n")
 
 	// generate first layer
 	var bedCenter Point
@@ -628,12 +613,7 @@ func generate(this js.Value, i []js.Value) interface{} {
 	}
 
 	// end gcode
-	write(";end gcode\n",
-		"M104 S0\n",
-		"M140 S0\n",
-		"M106 S0\n",
-		fmt.Sprintf("G1 Z%f F600\n", currentCoordinates.Z+5),
-		"M84")
+	write(endGcode)
 
 	// write calibration parameters to resultContainer
 	js.Global().Call("showError", caliParams)
