@@ -21,7 +21,7 @@
     <li><a class="lang" id="header.instruction" href="http://k3d.tech/calibrations/la/">Инструкция по использованию</a></li>
     <li><a class="lang" id="header.width_not_changing" href="http://k3d.tech/calibrations/la/#_10">Что делать, если толщина центрального участка не меняется?</a></li>
   </ul>
-  <p class="lang" id="header.language">Язык:</p><p><a href="k3d_la.html?lang=ru">Русский</a></p>
+  <p class="lang" id="header.language">Язык:</p><p><a href="k3d_la.html?lang=en">English</a> <a href="k3d_la.html?lang=ru">Русский</a></p>
   <table>
     <tbody>
       <tr>
@@ -170,7 +170,8 @@
       <tr>
         <td class="lang" id="table.start_gcode.title">Начальный G-код</td>
 		<!-- It can't be formatted, otherwise formatting breaks in the browser :( -->
-        <td><textarea type="text" id="startGcode" name="startGcode" rows="5">
+        <td><textarea type="text" id="k3d_la_startGcode" name="k3d_la_startGcode" rows="5">
+M104 S150 ;прогреть хотэнд до 150 градусов
 M190 S$BEDTEMP ;прогреть стол до температуры, указанной в настройках
 M109 S$HOTTEMP ;прогреть хотэнд до температуры, указанной в настройках
 G28 ;припарковать все оси
@@ -183,7 +184,7 @@ M221 S$FLOW ;Множитель потока взять из настроек</t
       </tr>
 	  <tr>
         <td class="lang" id="table.end_gcode.title">Конечный G-код</td>
-        <td><textarea type="text" id="endGcode" name="endGcode" rows="5">
+        <td><textarea type="text" id="k3d_la_endGcode" name="k3d_la_endGcode" rows="5">
 M104 S0 ;выключить хотэнд
 M140 S0 ;выключить нагрев стола
 M106 S0 ;выключить вентилятор модели

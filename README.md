@@ -13,7 +13,7 @@ Install golang and then simply run build.bat/build.sh, it should generate WASM f
 
 ## TODO
 
-- [ ] English localization
+- [X] English localization
 - [ ] Implement smooth_time calibration for klipper
 - [X] Implement start/end G-Code setting
 - [X] Implement reset to default settings button

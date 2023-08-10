@@ -107,7 +107,9 @@ var formFields = [
     "k3d_la_initKFactor",
     "k3d_la_endKFactor",
     "k3d_la_segmentHeight",
-    "k3d_la_numSegments"
+    "k3d_la_numSegments",
+	"k3d_la_startGcode",
+	"k3d_la_endGcode"
 ];
 var segmentFields = [
     "k3d_la_initKFactor",
@@ -192,9 +194,124 @@ function initForm() {
 function initLang(key) {
 	var values = window.lang.values;
 	switch (key) {
+		case 'en':
+			values['header.title'] = 'K3D Linear Advance calibrator';
+			values['header.language'] = 'Language: ';
+			values['header.useful_links'] = 'Useful links: ';
+			values['header.instruction'] = 'Instructions for use';
+			values['header.width_not_changing'] = 'What to do if the thickness of the central section does not change?';
+			
+			values['table.header.parameter'] = 'Parameter';
+			values['table.header.value'] = 'Value';
+			values['table.header.description'] = 'Description';
+			
+			values['table.bed_size_x.title'] = 'Bed size X';
+			values['table.bed_size_x.description'] = '[mm] For cartesian printers - maximum X coordinate<br>For delta-printers - <b>bed diameter</b>';
+			values['table.bed_size_y.title'] = 'Bed size Y';
+			values['table.bed_size_y.description'] = '[mm] For cartesian printers - maximum Y coordinate<br>For delta-printers - <b>bed diameter</b>';
+			values['table.firmware.title'] = 'Firmware';
+			values['table.firmware.description'] = 'Firmware installed on your printer. If you don\'t know, then it\'s probably Marlin';
+			values['table.delta.title'] = 'Origin at the center of the bed';
+			values['table.delta.description'] = 'Must be disabled for cartesian printers, enabled for deltas';
+			values['table.bed_probe.title'] = 'Bed auto-calibration';
+			values['table.bed_probe.description'] = 'Enables bed auto-calibration before printing (G29)? If you don\'t have bed probe, then leave it off.';
+			values['table.travel_speed.title'] = 'Travel speed';
+			values['table.travel_speed.description'] = '[mm/s] The speed at which movements will occur without extrusion';
+			values['table.hotend_temp.title'] = 'Hotend temperature';
+			values['table.hotend_temp.description'] = '[°C] The temperature to which to heat the hotend before printing';
+			values['table.bed_temp.title'] = 'Bed temperature';
+			values['table.bed_temp.description'] = '[°C] The temperature to which the bed must be heated before printing. The bed will heat up until parking and auto-calibration.';
+			values['table.fan_speed.title'] = 'Fan speed';
+			values['table.fan_speed.description'] = '[%] Fan speed in percent. In order for the temperature of the hot end not to drop sharply when the fan is turned on, the airflow will be turned off on the 1st layer. On layers 2-4, the fan speed will increase in steps to the specified value';
+			values['table.retract_length.title'] = 'Retraction length';
+			values['table.retract_length.description'] = '[mm] The length that the bar will retract to prevent plastic from leaking when moving. If you don\'t know, set 1.0 for direct extruder and 6.0 for bowden extruder';
+			values['table.retract_speed.title'] = 'Retraction speed';
+			values['table.retract_speed.description'] = '[mm/s] The speed at which the rollback will be performed. If you do not know, then put 25';
+			values['table.flow.title'] = 'Flow';
+			values['table.flow.description'] = '[%] Flow in percents. Needed to compensate for over- or under-extrusion';
+			values['table.first_line_width.title'] = 'First layer line width';
+			values['table.first_line_width.description'] = '[mm] The line width at which the raft will be printed under the towers. In general, it is recommended to set 150% of the nozzle diameter';
+			values['table.first_print_speed.title'] = 'First layer print speed';
+			values['table.first_print_speed.description'] = '[mm/s] The speed at which the raft under the towers will be printed';
+			values['table.z_offset.title'] = 'Z-offset';
+			values['table.z_offset.description'] = '[mm] Offset the entire model vertically. It is necessary to compensate for too thin / thick first layer calibration. Leave zero in general.';
+			values['table.num_perimeters.title'] = 'Number of perimeters';
+			values['table.num_perimeters.description'] = 'The number of perimeters for the main body of the calibration model. For near-zero shrinkage filaments (PLA, some composites) 1-2. For high shrinkage filaments (ABS and similar) 2+. For flexes 2-4 depending on their rigidity and the desired height of the tower';
+			values['table.line_width.title'] = 'Line width';
+			values['table.line_width.description'] = '[mm] The line width at which the towers will be printed. In general, it is recommended to set equal to the nozzle diameter';
+			values['table.layer_height.title'] = 'Layer height';
+			values['table.layer_height.description'] = '[mm] The thickness of the layers of the entire model. In general, 50% of the line width';
+			values['table.fast_segment_speed.title'] = 'Speed of fast sections';
+			values['table.fast_segment_speed.description'] = '[mm/s] The speed at which fast sections will be printed. It is better to specify high values (100-150)';
+			values['table.slow_segment_speed.title'] = 'Speed of slow sections';
+			values['table.slow_segment_speed.description'] = '[mm/s] The speed at which slow sections will be printed. It is better to specify low values (10-30)';
+			values['table.init_la.title'] = 'Initial value of the LA coefficient';
+			values['table.init_la.description'] = 'What is the value of the k-factor to start the calibration. Rounded up to 3 decimal places';
+			values['table.end_la.title'] = 'Final value of the LA coefficient';
+			values['table.end_la.description'] = 'To what value of the k-factor to calibrate. Rounded to 3 decimal places after the separator. For direct extruders, 0.2 is usually enough, for bowdens 1.5';
+			values['table.num_segments.title'] = 'Number of segments';
+			values['table.num_segments.description'] = 'The number of tower segments. During the segment, the LA coefficient remains unchanged. Segments are visually separated to simplify model analysis';
+			values['table.segment_height.title'] = 'Segment height';
+			values['table.segment_height.description'] = '[mm] The height of one segment of the tower. For example, if the height of the segment is 3mm, and the number of segments is 10, then the height of the entire tower will be 30mm';
+			values['table.start_gcode.title'] = 'Start G-Code';
+			values['table.start_gcode.description'] = 'The code that is executed before test. Change at your own risk! List of possible placeholders:<br><b>$BEDTEMP</b> - bed temperature<br><b>$HOTTEMP</b> - hotend temperature<br><b>$G29</b> - bed heightmap command<br><b>$FLOW</b> - flow';
+			values['table.end_gcode.title'] = 'End G-Code';
+			values['table.end_gcode.description'] = 'The code that is executed after the test. Change at your own risk!';
+			
+			values['generator.generate_and_download'] = 'Generate and download';		
+			values['generator.generate_button_loading'] = 'Generator loading...';
+			values['generator.segment'] = '; Segment %d: K-Factor: %s\n';
+			values['generator.reset_to_default'] = 'Reset settings';
+			
+			values['navbar.back'] = ' Back ';
+			values['navbar.site'] = 'Site';
+			
+			values['error.bed_size_x.format'] = 'Bed size Х - format error';
+			values['error.bed_size_x.small_or_big'] = 'Bed size X is incorrect (less than 100 or greater than 1000 mm)';
+			values['error.bed_size_y.format'] = 'Bed size Y - format error';
+			values['error.bed_size_y.small_or_big'] = 'Bed size Y is incorrect (less than 100 or greater than 1000 mm)';
+			values['error.hotend_temp.format'] = 'Hotend temperature - format error';
+			values['error.hotend_temp.too_low'] = 'Hotend temperature is too low';
+			values['error.hotend_temp.too_high'] = 'Hotend temperature is too high';
+			values['error.bed_temp.format'] = 'Bed temperature - format error: ';
+			values['error.bed_temp.too_high'] = 'Bed temperature is too high';
+			values['error.fan_speed.format'] = 'Fan speed - format error';
+			values['error.line_width.format'] = 'Line width - format error';
+			values['error.line_width.small_or_big'] = 'Wrong line width (less than 0.1 or greater than 2.0 mm)';
+			values['error.first_line_width.format'] = 'First layer line width - format error';
+			values['error.first_line_width.small_or_big'] = 'Wrong first line width (less than 0.1 or greater than 2.0 mm)';
+			values['error.layer_height.format'] = 'Layer height - format error';
+			values['error.layer_height.small_or_big'] = 'Wrong layer height (less than 0.05 mm or greater than 75% from line width)';
+			values['error.first_print_speed.format'] = 'First layer print speed - format error';
+			values['error.first_print_speed.slow_or_fast'] = 'Wrong first layer print speed (less than 10 or greater than 1000 mm/s)';
+			values['error.travel_speed.format'] = 'Travel speed - format error';
+			values['error.travel_speed.slow_or_fast'] = 'Wrong travel speed (less than 10 or greater than 1000 mm/s)';
+			values['error.num_segments.format'] = 'Number of segments - format error';
+			values['error.num_segments.slow_or_fast'] = 'Wrong number of segments (less than 2 or greater than 100)';
+			values['error.segment_height.format'] = 'Segment height - format error';
+			values['error.segment_height.small_or_big'] = 'Wrong segment height (less than 0.5 or greater than 10 mm)';
+			values['error.z_offset.format'] = 'Z-offset - format error';
+			values['error.z_offset.small_or_big'] = 'Offset value is wrong (less than -0.5 or more than 0.5 mm)';
+			values['error.flow.format'] = 'Flow - format error';
+			values['error.flow.low_or_high'] = 'Value error: flow should be from 50 to 150%';
+			values['error.firmware.not_set'] = 'Format error: firmware not set';
+			values['error.retract_length.format'] = 'Retraction length - format error';
+			values['error.retract_length.small_or_big'] = 'Retraction length is incorrect (less than 0.1 or greater than 20 mm)';
+			values['error.retract_speed.format'] = 'Retraction speed - format error';
+			values['error.retract_speed.small_or_big'] = 'Retraction speed is incorrect (less than 5 or greater than 150 mm/s)';
+			values['error.num_perimeters.format'] = 'Number of perimeters - format error';
+			values['error.num_perimeters.small_or_big'] = 'Value error: number of perimeters must be between 1 and 5';
+			values['error.fast_segment_speed.format'] = 'Speed of fast sections - format Error';
+			values['error.fast_segment_speed.small_or_big'] = 'The print speed of fast sections is incorrect (less than 10 or more than 1000 mm/s)';
+			values['error.slow_segment_speed.format'] = 'Speed of slow sections - format error';
+			values['error.slow_segment_speed.small_or_big'] = 'The print speed of slow sections is incorrect (less than 10 or more than 1000 mm/s)';
+			values['error.init_la.format'] = 'Initial LA coefficient - format error';
+			values['error.init_la.small_or_big'] = 'The initial value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
+			values['error.end_la.format'] = 'Final LA coefficient - format error';
+			values['error.end_la.small_or_big'] = 'The final value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
+			break;
 		case 'ru':
 			values['header.title'] = 'K3D калибровщик Linear Advance';
-			values['header.description'] = 'Подробное описание работы вы можете прочитать в <a href="https://k3d.tech/calibrations/la/">статье на основном сайте.</a>';
 			values['header.language'] = 'Язык: ';
 			values['header.useful_links'] = 'Полезные ссылки:';
 			values['header.instruction'] = 'Инструкция по использованию';
@@ -248,7 +365,6 @@ function initLang(key) {
 			values['table.init_la.description'] = 'С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя';
 			values['table.end_la.title'] = 'Конечное значение коэффициента LA';
 			values['table.end_la.description'] = 'До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ экструдеров обычно хватает 0.2, для боуденов 1.5';
-			
 			values['table.num_segments.title'] = 'Количество сегментов';
 			values['table.num_segments.description'] = 'Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально разделены для упрощения анализа модели';
 			values['table.segment_height.title'] = 'Высота сегмента';
@@ -282,8 +398,6 @@ function initLang(key) {
 			values['error.first_line_width.small_or_big'] = 'Неправильная ширина линии первого слоя (меньше 0.1 или больше 2.0 мм)';
 			values['error.layer_height.format'] = 'Высота слоя - ошибка формата';
 			values['error.layer_height.small_or_big'] = 'Толщина слоя неправильная (меньше 0.05 или больше 1.2 мм)';
-			values['error.print_speed.format'] = 'Скорость печати - ошибка формата';
-			values['error.print_speed.slow_or_fast'] = 'Скорость печати неправильная (меньше 10 или больше 1000 мм/с)';
 			values['error.first_print_speed.format'] = 'Скорость печати первого слоя - ошибка формата';
 			values['error.first_print_speed.slow_or_fast'] = 'Скорость печати первого слоя неправильная (меньше 10 или больше 1000 мм/с)';
 			values['error.travel_speed.format'] = 'Скорость перемещений - ошибка формата';
@@ -302,11 +416,11 @@ function initLang(key) {
 			values['error.retract_speed.format'] = 'Скорость отката - ошибка формата';
 			values['error.retract_speed.small_or_big'] = 'Скорость отката неправильная (меньше 5 или больше 150 мм/с)';
 			values['error.num_perimeters.format'] = 'Количество периметров - ошибка формата';
-			values['error.num_perimeters.small_or_big'] = 'Ошибка значения: количество периметров должно быть от 1 до 5\n';
+			values['error.num_perimeters.small_or_big'] = 'Ошибка значения: количество периметров должно быть от 1 до 5';
 			values['error.fast_segment_speed.format'] = 'Скорость печати быстрых участков - ошибка формата';
-			values['error.fast_segment_speed.small_or_big'] = 'Скорость печати быстрых участков неверная (меньше 10 или больше 1000 мм/с';
+			values['error.fast_segment_speed.small_or_big'] = 'Скорость печати быстрых участков неверная (меньше 10 или больше 1000 мм/с)';
 			values['error.slow_segment_speed.format'] = 'Скорость печати медленных участков - ошибка формата';
-			values['error.slow_segment_speed.small_or_big'] = 'Скорость печати медленных участков неверная (меньше 10 или больше 1000 мм/с';
+			values['error.slow_segment_speed.small_or_big'] = 'Скорость печати медленных участков неверная (меньше 10 или больше 1000 мм/с)';
 			values['error.init_la.format'] = 'Начальное значение коэффициента LA - ошибка формата';
 			values['error.init_la.small_or_big'] = 'Начальное значение коэффициента LA неверное (меньше 0.0 или больше 2.0)';
 			values['error.end_la.format'] = 'Конечное значение коэффициента LA - ошибка формата';

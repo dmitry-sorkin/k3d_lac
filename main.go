@@ -412,8 +412,8 @@ func check(showErrorBox bool, allowModify bool) bool {
 		retErr = true
 	}
 
-	startGcode = doc.Call("getElementById", "startGcode").Get("innerHTML").String()
-	endGcode = doc.Call("getElementById", "endGcode").Get("innerHTML").String()
+	startGcode = doc.Call("getElementById", "k3d_la_startGcode").Get("value").String()
+	endGcode = doc.Call("getElementById", "k3d_la_endGcode").Get("value").String()
 	
 	if !showErrorBox {
 		return !retErr
@@ -499,7 +499,8 @@ func generate(this js.Value, i []js.Value) interface{} {
 		fmt.Sprintf("; Segments: %dx%s mm\n", numSegments, fmt.Sprint(roundFloat(segmentHeight, 2))),
 		fmt.Sprintf("; Print speed: %d, %d, %d mm/s\n", firstLayerPrintSpeed, slowPrintSpeed, fastPrintSpeed),
 		fmt.Sprintf("; Retractions: %smm @ %d mm/s\n", fmt.Sprint(roundFloat(retractLength, 2)), retractSpeed),
-		caliParams)
+		caliParams,
+		generateLACommand(currentKFactor))
 	
 	var g29str string
 	if g29 {
