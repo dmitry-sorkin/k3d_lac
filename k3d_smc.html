@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>K3D калибровщик максимальных ускорений для IS</title>
+  <script src="assets/js/lib.js"></script>
+  <script src="assets/js/wasm_exec.js"></script>
+  <script src="assets/js/gwaloader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
+  <link rel="stylesheet" href="assets/css/k3d_smc_style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body onload="init()">
+<h1 class="lang" id="header.title">K3D калибровщик максимальных ускорений для IS</h1>
+  <table>
+    <tbody>
+      <tr>
+        <th class="lang" id="table.header.parameter">Параметр</th>
+        <th class="lang" id="table.header.value">Значение</th>
+        <th class="lang" id="table.header.description">Описание</th>
+      </tr>
+      <!-- Параметры принтера -->
+      <tr>
+        <td class="lang" id="table.bed_size_x.title">Размер стола по X</td>
+        <td><input type="text" id="k3d_smc_bedX" name="k3d_smc_bedX" value="235"></td>
+        <td class="lang" id="table.bed_size_x.description">[мм] Для декартовых принтеров - максимальная координата по оси X<br>Для дельта-принтеров - <b>диаметр стола</b></td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.bed_size_y.title">Размер стола по Y</td>
+        <td><input type="text" id="k3d_smc_bedY" name="k3d_smc_bedY" value="235"></td>
+        <td class="lang" id="table.bed_size_y.description">[мм] Для декартовых принтеров - максимальная координата по оси Y<br>Для дельта-принтеров - <b>диаметр стола</b></td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.firmware.title">Прошивка</td>
+        <td style="text-align:center;">
+          <form><input type="radio" id="k3d_smc_firmwareMarlin" name="k3d_smc_firmware" value="Marlin" checked><label for="k3d_smc_firmwareMarlin">Marlin</label><br>
+            <input type="radio" id="k3d_smc_firmwareKlipper" name="k3d_smc_firmware" value="Klipper"><label for="k3d_smc_firmwareKlipper">Klipper</label><br>
+            <input type="radio" id="k3d_smc_firmwareRRF" name="k3d_smc_firmware" value="RRF"><label for="k3d_smc_firmwareRRF">RRF</label>
+          </form>
+        </td>
+        <td class="lang" id="table.firmware.description">Прошивка, установленная на вашем принтере.</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.delta.title">Начало координат в центре стола</td>
+        <td style="text-align:center"><input type="checkbox" id="k3d_smc_delta" name="k3d_smc_delta"></td>
+        <td class="lang" id="table.delta.description">Для декартовых принтеров должно быть выключено, для дельт включено</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.bed_probe.title">Автокалибровка стола</td>
+        <td style="text-align:center"><input type="checkbox" id="k3d_smc_bedProbe" name="k3d_smc_bedProbe"></td>
+        <td class="lang" id="table.bed_probe.description">Надо ли делать автокалибровку стола перед печатью (G29)? Если у вас нет датчика автокалибровки, то
+          оставляйте выключенным</td>
+      </tr>
+      <!-- Параметры филамента -->
+      <tr>
+        <td class="lang" id="table.hotend_temp.title">Температура хотэнда</td>
+        <td><input type="text" id="k3d_smc_hotendTemperature" name="k3d_smc_hotendTemperature" value="210"></td>
+        <td class="lang" id="table.hotend_temp.description">[°C] До прогрева стола хотэнд будет нагрет до 150 градусов. После полного нагрева стола хотэнд догреется до
+          указанной температуры</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.bed_temp.title">Температура стола</td>
+        <td><input type="text" id="k3d_smc_bedTemperature" name="k3d_smc_bedTemperature" value="60"></td>
+        <td class="lang" id="table.bed_temp.description">[°C] Температура, до которой нагреть стол перед печатью. Стол будет нагрет до выполнения парковки и автокалибровки стола</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.cooling.title">Скорость вентилятора</td>
+        <td><input type="text" id="k3d_smc_cooling" name="k3d_smc_cooling" value="100"></td>
+        <td class="lang" id="table.cooling.description">[%] Обороты вентилятора в процентах. Для того, чтобы температура хотэнда резко не упала при включении вентилятора, на 1 слое он будет включен на 1/3 от заданного значения, на 2 слое на 2/3, на 4 слое на заданное значение</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.flow.title">Поток</td>
+        <td><input type="text" id="k3d_smc_flow" name="k3d_smc_flow" value="100"></td>
+        <td class="lang" id="table.flow.description">[%] Поток в процентах. Нужен для компенсации пере- или недоэкструзии</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.la.title">k-фактор LA/PA</td>
+        <td><input type="text" id="k3d_smc_la" name="k3d_smc_la" value="0.0"></td>
+        <td class="lang" id="table.la.description">[с] Введите сюда ваше значение для Linear/Pressure Advance. Если вы не пользуетесь Linear/Pressure Advance, то оставьте значение нулевым</td>
+      </tr>
+      <!-- Параметры первого слоя -->
+      <tr>
+        <td class="lang" id="table.first_line_width.title">Ширина линии первого слоя</td>
+        <td><input type="text" id="k3d_smc_firstLayerLineWidth" name="k3d_smc_firstLayerLineWidth" value="0.6"></td>
+        <td class="lang" id="table.first_line_width.description">[мм] Ширина линий, с которой будет напечатана подложка под моделью. В общем случае рекомендуется выставить 150% от диаметра сопла</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.first_print_speed.title">Скорость печати первого слоя</td>
+        <td><input type="text" id="k3d_smc_firstLayerSpeed" name="k3d_smc_firstLayerSpeed" value="30"></td>
+        <td class="lang" id="table.first_print_speed.description">[мм/с] Скорость, с которой будет напечатана подложка</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.z_offset.title">Z-offset</td>
+        <td><input type="text" id="k3d_smc_zOffset" name="k3d_smc_zOffset" value="0.0"></td>
+        <td class="lang" id="table.z_offset.description">[мм] Смещение всей модели по вертикали. Нужно чтобы компенсировать слишком тонкую/толстую калибровку первого слоя. В общем случае оставьте ноль</td>
+      </tr>
+      <!-- Параметры модели -->
+      <tr>
+        <td class="lang" id="table.line_width.title">Ширина линии</td>
+        <td><input type="text" id="k3d_smc_lineWidth" name="k3d_smc_lineWidth" value="0.4"></td>
+        <td class="lang" id="table.line_width.description">[мм] Ширина линий, с которой будут напечатана тестовая модель. В общем случае рекомендуется выставить равной диаметру сопла</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.layer_height.title">Толщина слоя</td>
+        <td><input type="text" id="k3d_smc_layerHeight" name="k3d_smc_layerHeight" value="0.2"></td>
+        <td class="lang" id="table.layer_height.description">[мм] Толщина слоёв всей модели. В общем случае 50% от ширины линии</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.print_speed.title">Скорость печати</td>
+        <td><input type="text" id="k3d_smc_printSpeed" name="k3d_smc_printSpeed" value="150"></td>
+        <td class="lang" id="table.print_speed.description">[мм/с] Скорость, с которой будет распечатана основная часть модели. Рекомендуется установить максимальное значение, при котором планируете печатать, но чтобы еще хватало производительности экструдера.</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.slow_acceleration.title">Ускорение для медленных сегментов</td>
+        <td><input type="text" id="k3d_smc_slowAcceleration" value="500"></td>
+        <td class="lang" id="table.slow_acceleration.description">[мм/с^2] Ускорение, которое будет использоваться при печати подложки, а также медленных сегментов модели. Обязательно должно быть небольшим (<1000мм/с^2), иначе калибровка будет непоказательна.</td>
+      </tr>
+      <!-- Параметры калибровки -->
+      <tr>
+        <td class="lang" id="table.start_acceleration.title">Начальное значение ускорения</td>
+        <td><input type="text" id="k3d_smc_startAcceleration" value="1000"></td>
+        <td class="lang" id="table.start_acceleration.description">[мм/с^2] Начальное значение ускорение для калибровки</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.end_acceleration.title">Конечное значение ускорения</td>
+        <td><input type="text" id="k3d_smc_endAcceleration" value="10000"></td>
+        <td class="lang" id="table.end_acceleration.description">[мм/с^2] Конечное значение ускорения для калибровки</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.num_segments.title">Количество проверяемых значений</td>
+        <td><input type="text" id="k3d_smc_numSegments" value="11"></td>
+        <td class="lang" id="table.num_segments.description">Количество сегментов для проверки</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.start_gcode.title">Начальный G-код</td>
+		<!-- It can't be formatted, otherwise formatting breaks in the browser :( -->
+        <td><textarea type="text" id="k3d_smc_startGcode" name="k3d_smc_startGcode" rows="5">
+M104 S150 ;прогреть хотэнд до 150 градусов
+M190 S$BEDTEMP ;прогреть стол до температуры, указанной в настройках
+M109 S$HOTTEMP ;прогреть хотэнд до температуры, указанной в настройках
+G28 ;припарковать все оси
+$G29 ;снять карту высот стола
+G90 ;абсолютная система координат
+G92 E0 ;сбросить координату экструдера
+M220 S100 ;Множитель скорости 100%
+M221 S$FLOW ;Множитель потока взять из настроек</textarea></td>
+        <td class="lang" id="table.start_gcode.description">Начальный G-код для печати. В общем случае не требуется менять его вручную</td>
+      </tr>
+	  <tr>
+        <td class="lang" id="table.end_gcode.title">Конечный G-код</td>
+        <td><textarea type="text" id="k3d_smc_endGcode" name="k3d_smc_endGcode" rows="5">
+M104 S0 ;выключить хотэнд
+M140 S0 ;выключить нагрев стола
+M106 S0 ;выключить вентилятор модели
+G91 ;относительная система координат
+G1 E-5 F600 ;сделать откат на 5мм
+G1 Z1 F300 ;поднять голову на 1мм</textarea></td>
+        <td class="lang" id="table.end_gcode.description">Конечный G-код для печати. В общем случае не требуется менять его вручную</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="button-section">
+    <button class="generate-button" onclick="generate();" id="generateButton" style="display:none">Генерировать и скачать</button>
+    <p id="generateButtonLoading"> Генератор загружается...</p>
+	<button class="reset-button" onclick="reset();" id="resetButton">Сбросить настройки</button>
+    <div id="resultContainer"></div>
+  </div>
+  <footer>
+    <nav class="navbar">
+      <a href="./index.html" class="navbar-back" aria-label="Назад: Сайт">
+        <div class="navbar-icon"><svg class="navbar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path>
+          </svg></div>
+        <div class="navbar-title">
+          <div class="navbar-ellipsis">
+            <span class="navbar-direction"> Назад </span>
+            <span class="lang" id="navbar.site">Сайт</span>
+          </div>
+        </div>
+      </a>
+    </nav>
+    <div class="footer-meta">
+      <div class="footer-meta-inner">
+        <div class="copyright">
+          Written by Dmitry Sorkin and Kekht<br>
+          Copyright © 2022
+        </div>
+        <div class="social">
+          <a href="https://t.me/vostok3dp" target="_blank" rel="noopener" title="t.me" class="social-link">
+            <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512">
+              <path
+                d="M248 8C111.033 8 0 119.033 0 256s111.033 248 248 248 248-111.033 248-248S384.967 8 248 8Zm114.952 168.66c-3.732 39.215-19.881 134.378-28.1 178.3-3.476 18.584-10.322 24.816-16.948 25.425-14.4 1.326-25.338-9.517-39.287-18.661-21.827-14.308-34.158-23.215-55.346-37.177-24.485-16.135-8.612-25 5.342-39.5 3.652-3.793 67.107-61.51 68.335-66.746.153-.655.3-3.1-1.154-4.384s-3.59-.849-5.135-.5q-3.283.746-104.608 69.142-14.845 10.194-26.894 9.934c-8.855-.191-25.888-5.006-38.551-9.123-15.531-5.048-27.875-7.717-26.8-16.291q.84-6.7 18.45-13.7 108.446-47.248 144.628-62.3c68.872-28.647 83.183-33.623 92.511-33.789 2.052-.034 6.639.474 9.61 2.885a10.452 10.452 0 0 1 3.53 6.716 43.765 43.765 0 0 1 .417 9.769Z">
+              </path>
+            </svg>
+          </a>
+          <a href="https://www.youtube.com/c/SorkinDmitry" target="_blank" rel="noopener" title="www.youtube.com"
+            class="social-link">
+            <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path
+                d="m10 15 5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73Z">
+              </path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>
