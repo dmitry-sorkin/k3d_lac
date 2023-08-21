@@ -548,6 +548,9 @@ func generate(this js.Value, i []js.Value) interface{} {
 		write(generateMove(currentCoordinates, trajectory[i], firstLayerLineWidth, firstLayerPrintSpeed)...)
 	}
 
+	// set LA for first segment
+	write(generateLACommand(currentKFactor))
+
 	// generate model
 	layersPerSegment := int(segmentHeight / layerHeight)
 	for i := 1; i < numSegments*layersPerSegment; i++ {

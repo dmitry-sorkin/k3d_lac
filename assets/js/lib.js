@@ -1,4 +1,4 @@
-const calibrator_version = 'v1.4';
+const calibrator_version = 'v1.4b';
 window.calibrator_version = calibrator_version;
 var savedSegmentsInfo = null;
 
