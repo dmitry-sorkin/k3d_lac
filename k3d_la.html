@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>K3D калибровщик Linear Advance v1.2</title>
+  <title>K3D калибровщик Linear Advance</title>
   <script src="assets/js/lib.js"></script>
   <script src="assets/js/wasm_exec.js"></script>
   <script src="assets/js/gwaloader.js"></script>
@@ -149,6 +149,11 @@
         <td><input type="text" id="k3d_la_numSegments" name="k3d_la_numSegments" value="10"></td>
         <td class="lang" id="table.num_segments.description">Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально
           разделены для упрощения анализа модели</td>
+      </tr>
+      <tr>
+        <td class="lang" id="table.smooth_time.title">Время сглаживания LA</td>
+        <td><input type="text" id="k3d_la_smoothTime" value="0.02"></td>
+        <td class="lang" id="table.smooth_time.description">Время сглаживания Pressure Advance. В Klipper стоит начать с 0.02 и, если сталкиваетесь с разрывами на моделях, увеличивать по 0.01 пока они не пройдут. В Marlin и RRF не работает, можете оставлять любое значение. Подробнее в инструкции</td>
       </tr>
       <tr>
         <td class="lang" id="table.segment_height.title">Высота сегмента</td>

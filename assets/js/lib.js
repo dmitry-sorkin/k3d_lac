@@ -107,7 +107,8 @@ var formFields = [
     "k3d_la_segmentHeight",
     "k3d_la_numSegments",
 	"k3d_la_startGcode",
-	"k3d_la_endGcode"
+	"k3d_la_endGcode",
+	"k3d_la_smoothTime"
 ];
 var segmentFields = [
     "k3d_la_initKFactor",
@@ -251,6 +252,8 @@ function initLang(key) {
 			values['table.start_gcode.description'] = 'The code that is executed before test. Change at your own risk! List of possible placeholders:<br><b>$BEDTEMP</b> - bed temperature<br><b>$HOTTEMP</b> - hotend temperature<br><b>$G29</b> - bed heightmap command<br><b>$FLOW</b> - flow';
 			values['table.end_gcode.title'] = 'End G-Code';
 			values['table.end_gcode.description'] = 'The code that is executed after the test. Change at your own risk!';
+			values['table.smooth_time.title'] = 'LA/PA smooth time';
+			values['table.smooth_time.description'] = '[s] When calbrating it is better to start with 0.02s and increase that value only if there is extruder skipping or other problems with PA. Works only on Klipper firmware'
 			
 			values['generator.generate_and_download'] = 'Generate and download';		
 			values['generator.generate_button_loading'] = 'Generator loading...';
@@ -299,6 +302,8 @@ function initLang(key) {
 			values['error.init_la.small_or_big'] = 'The initial value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
 			values['error.end_la.format'] = 'Final LA coefficient - format error';
 			values['error.end_la.small_or_big'] = 'The final value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
+			values['error.smooth_time.format'] = 'Smooth time - format error';
+			values['error.smooth_time.small_or_big'] = 'Smooth time value is incorrect (leass than 0.005 ir greater than 0.2)';
 			break;
 		case 'ru':
 			values['header.title'] = 'K3D калибровщик Linear Advance';
@@ -359,6 +364,7 @@ function initLang(key) {
 			values['table.start_gcode.description'] = 'Код, выполняемый перед печатью теста. Менять на свой страх и риск! Список возможных плейсхолдеров:<br><b>$BEDTEMP</b> - температура стола<br><b>$HOTTEMP</b> - температура хотэнда<br><b>$G29</b> - команда на снятие карты высот стола<br><b>$FLOW</b> - поток';
 			values['table.end_gcode.title'] = 'Конечный G-код';
 			values['table.end_gcode.description'] = 'Код, выполняемый после печати теста. Менять на свой страх и риск!';
+			values['table.smooth_time.title'] = 'Время сглаживания LA/PA'
 			
 			values['generator.generate_and_download'] = 'Генерировать и скачать';		
 			values['generator.generate_button_loading'] = 'Генератор загружается...';		

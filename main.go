@@ -12,7 +12,7 @@ const filamentDiameter = 1.75
 
 var (
 	// Variables from web interface
-	bedX, bedY, zOffset, retractLength, firstLayerLineWidth, lineWidth, layerHeight, initKFactor, endKFactor, segmentHeight                                                 float64
+	bedX, bedY, zOffset, retractLength, firstLayerLineWidth, lineWidth, layerHeight, initKFactor, endKFactor, segmentHeight, smoothTime                                     float64
 	firmware, travelSpeed, hotendTemperature, bedTemperature, retractSpeed, cooling, firstLayerPrintSpeed, fastPrintSpeed, slowPrintSpeed, numSegments, numPerimeters, flow int
 	bedProbe, retracted, delta                                                                                                                                              bool
 	startGcode, endGcode                                                                                                                                                    string
@@ -22,7 +22,7 @@ var (
 	currentE           float64
 )
 
-const caliVersion = "v1.3"
+const caliVersion = "v1.4"
 
 type Point struct {
 	X float64
@@ -392,6 +392,21 @@ func check(showErrorBox bool, allowModify bool) bool {
 		retErr = true
 	}
 
+	docSmoothTime, err := parseInputToFloat(doc.Call("getElementById", "k3d_la_smoothTime").Get("value").String())
+	if err != nil {
+		curErr, hasErr = lang.Call("getString", "error.smooth_time.format").String(), true
+	} else if docSmoothTime < 0.005 || docSmoothTime > 0.2 {
+		curErr, hasErr = lang.Call("getString", "error.smooth_time.small_or_big").String(), true
+	} else {
+		smoothTime = docSmoothTime
+	}
+	setErrorDescription(doc, lang, "table.smooth_time.description", curErr, hasErr, allowModify)
+	if hasErr {
+		errorString = errorString + curErr + "\n"
+		hasErr = false
+		retErr = true
+	}
+
 	startGcode = doc.Call("getElementById", "k3d_la_startGcode").Get("value").String()
 	endGcode = doc.Call("getElementById", "k3d_la_endGcode").Get("value").String()
 
@@ -631,7 +646,7 @@ func generateLACommand(kFactor float64) string {
 	if firmware == 0 {
 		return fmt.Sprintf("M900 K%s\n", fmt.Sprint(roundFloat(kFactor, 3)))
 	} else if firmware == 1 {
-		return fmt.Sprintf("SET_PRESSURE_ADVANCE ADVANCE=%s\n", fmt.Sprint(roundFloat(kFactor, 3)))
+		return fmt.Sprintf("SET_PRESSURE_ADVANCE ADVANCE=%s SMOOTH_TIME=%s\n", fmt.Sprint(roundFloat(kFactor, 3)), fmt.Sprint(roundFloat(smoothTime, 3)))
 	} else if firmware == 2 {
 		return fmt.Sprintf("M572 D0 S%s\n", fmt.Sprint(roundFloat(kFactor, 3)))
 	}
