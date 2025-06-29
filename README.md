@@ -1,6 +1,6 @@
 # K3D Linear advance calibration model generator
 
-Simple models generator for linear/pressure advance calibration written in golang. Hosted [>here<](https://k3d.tech/calibrations/la/k3d_la.html?lang=en). 
+Simple models generator for linear/pressure advance calibration written in golang. Hosted [>here<](https://k3d.tech/calibrations/la/calibrator/?lang=en). 
 The author is not a professional programmer. The code is terrible. When reading the code, avoid psychological trauma.
 
 # Building

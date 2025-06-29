@@ -1,4 +1,4 @@
-const calibrator_version = 'v1.4b';
+const calibrator_version = 'v1.5';
 window.calibrator_version = calibrator_version;
 var savedSegmentsInfo = null;
 
@@ -57,6 +57,7 @@ function finishFile() {
 		currentWriter.ready.then(() => {
 			currentWriter.close();
 			currentWriter = null;
+			currentStream = null;
 		})
 		.catch((err)=>{
 			showError(err);
@@ -121,12 +122,21 @@ var segmentKeys = [
 	"num_segments"
 ];
 
+var checkboxes = [
+	'k3d_la_delta',
+	'k3d_la_g29',
+	'k3d_la_firmwareMarlin',
+	'k3d_la_firmwareKlipper',
+	'k3d_la_firmwareRRF',
+];
+
+
 var saveForm = function () {
     for (var elementId of formFields) {
         var element = document.getElementById(elementId);
         if (element) {
             var saveValue = element.value;
-            if (elementId == 'k3d_la_delta' || elementId == 'k3d_la_g29') {
+            if (checkboxes.includes(elementId)) {
                 saveValue = element.checked;
             }
             localStorage.setItem(elementId, saveValue);
@@ -143,7 +153,7 @@ function loadForm() {
 
         var element = document.getElementById(elementId);
         if (element) {
-            if (elementId == 'k3d_la_delta' || elementId == 'k3d_la_g29') {
+            if (checkboxes.includes(elementId)) {
                 if (loadValue == 'true') {
                     element.checked = true;
                 } else {
@@ -194,11 +204,7 @@ function initLang(key) {
 	var values = window.lang.values;
 	switch (key) {
 		case 'en':
-			values['header.title'] = 'K3D Linear Advance calibrator';
-			values['header.language'] = 'Language: ';
-			values['header.useful_links'] = 'Useful links: ';
-			values['header.instruction'] = 'Instructions for use';
-			values['header.width_not_changing'] = 'What to do if the thickness of the central section does not change?';
+			values['header.title'] = 'K3D Linear Advance (Pressure Advance) calibrator';
 			
 			values['table.header.parameter'] = 'Parameter';
 			values['table.header.value'] = 'Value';
@@ -240,28 +246,24 @@ function initLang(key) {
 			values['table.fast_segment_speed.description'] = '[mm/s] The speed at which fast sections will be printed. It is better to specify high values (100-150)';
 			values['table.slow_segment_speed.title'] = 'Speed of slow sections';
 			values['table.slow_segment_speed.description'] = '[mm/s] The speed at which slow sections will be printed. It is better to specify low values (10-30)';
-			values['table.init_la.title'] = 'Initial value of the LA coefficient';
+			values['table.init_la.title'] = 'Initial value of the LA/PA coefficient';
 			values['table.init_la.description'] = 'What is the value of the k-factor to start the calibration. Rounded up to 3 decimal places';
-			values['table.end_la.title'] = 'Final value of the LA coefficient';
+			values['table.end_la.title'] = 'Final value of the LA/PA coefficient';
 			values['table.end_la.description'] = 'To what value of the k-factor to calibrate. Rounded to 3 decimal places after the separator. For direct extruders, 0.2 is usually enough, for bowdens 1.5';
 			values['table.num_segments.title'] = 'Number of segments';
-			values['table.num_segments.description'] = 'The number of tower segments. During the segment, the LA coefficient remains unchanged. Segments are visually separated to simplify model analysis';
+			values['table.num_segments.description'] = 'The number of tower segments. During the segment, the LA/PA coefficient remains unchanged. Segments are visually separated to simplify model analysis';
 			values['table.segment_height.title'] = 'Segment height';
 			values['table.segment_height.description'] = '[mm] The height of one segment of the tower. For example, if the height of the segment is 3mm, and the number of segments is 10, then the height of the entire tower will be 30mm';
 			values['table.start_gcode.title'] = 'Start G-Code';
-			values['table.start_gcode.description'] = 'The code that is executed before test. Change at your own risk! List of possible placeholders:<br><b>$BEDTEMP</b> - bed temperature<br><b>$HOTTEMP</b> - hotend temperature<br><b>$G29</b> - bed heightmap command<br><b>$FLOW</b> - flow';
+			values['table.start_gcode.description'] = 'Start code is executed before test, end code - after test. You don\'n need to change it until your printer needs special initialisation or print end workflow. Change at your own risk! List of possible placeholders:<br><b>$BEDTEMP</b> - bed temperature<br><b>$HOTTEMP</b> - hotend temperature<br><b>$G29</b> - bed heightmap command<br><b>$FLOW</b> - flow';
 			values['table.end_gcode.title'] = 'End G-Code';
-			values['table.end_gcode.description'] = 'The code that is executed after the test. Change at your own risk!';
-			values['table.smooth_time.title'] = 'LA/PA smooth time';
-			values['table.smooth_time.description'] = '[s] When calbrating it is better to start with 0.02s and increase that value only if there is extruder skipping or other problems with PA. Works only on Klipper firmware'
+			values['table.smooth_time.title'] = 'PA smooth time';
+			values['table.smooth_time.description'] = '[s] In general, it\'s recommended to set 0.04s. If printed model has short underextruded distance before and after turns, than you can try 0.03 or 0.02s. On Marlin and RRF does nothing';
 			
 			values['generator.generate_and_download'] = 'Generate and download';		
 			values['generator.generate_button_loading'] = 'Generator loading...';
 			values['generator.segment'] = '; Segment %d: K-Factor: %s\n';
 			values['generator.reset_to_default'] = 'Reset settings';
-			
-			values['navbar.back'] = ' Back ';
-			values['navbar.site'] = 'Site';
 			
 			values['error.bed_size_x.format'] = 'Bed size Х - format error';
 			values['error.bed_size_x.small_or_big'] = 'Bed size X is incorrect (less than 100 or greater than 1000 mm)';
@@ -294,23 +296,19 @@ function initLang(key) {
 			values['error.firmware.not_set'] = 'Format error: firmware not set';
 			values['error.num_perimeters.format'] = 'Number of perimeters - format error';
 			values['error.num_perimeters.small_or_big'] = 'Value error: number of perimeters must be between 1 and 5';
-			values['error.fast_segment_speed.format'] = 'Speed of fast sections - format Error';
+			values['error.fast_segment_speed.format'] = 'Speed of fast sections - format error';
 			values['error.fast_segment_speed.small_or_big'] = 'The print speed of fast sections is incorrect (less than 10 or more than 1000 mm/s)';
 			values['error.slow_segment_speed.format'] = 'Speed of slow sections - format error';
 			values['error.slow_segment_speed.small_or_big'] = 'The print speed of slow sections is incorrect (less than 10 or more than 1000 mm/s)';
-			values['error.init_la.format'] = 'Initial LA coefficient - format error';
-			values['error.init_la.small_or_big'] = 'The initial value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
-			values['error.end_la.format'] = 'Final LA coefficient - format error';
-			values['error.end_la.small_or_big'] = 'The final value of the LA coefficient is incorrect (less than 0.0 or greater than 2.0)';
-			values['error.smooth_time.format'] = 'Smooth time - format error';
-			values['error.smooth_time.small_or_big'] = 'Smooth time value is incorrect (leass than 0.005 ir greater than 0.2)';
+			values['error.init_la.format'] = 'Initial LA/PA coefficient - format error';
+			values['error.init_la.small_or_big'] = 'The initial value of the LA/PA coefficient is incorrect (less than 0.0 or greater than 2.0)';
+			values['error.end_la.format'] = 'Final LA/PA coefficient - format error';
+			values['error.end_la.small_or_big'] = 'The final value of the LA/PA coefficient is incorrect (less than 0.0 or greater than 2.0)';
+			values['error.smooth_time.format'] = 'PA smooth time - format error';
+			values['error.smooth_time.small_or_big'] = 'PA smooth time value is incorrect (less than 0.005 of greater than 0.2)';
 			break;
 		case 'ru':
 			values['header.title'] = 'K3D калибровщик Linear Advance';
-			values['header.language'] = 'Язык: ';
-			values['header.useful_links'] = 'Полезные ссылки:';
-			values['header.instruction'] = 'Инструкция по использованию';
-			values['header.width_not_changing'] = 'Что делать, если толщина центрального участка не меняется?';
 			
 			values['table.header.parameter'] = 'Параметр';
 			values['table.header.value'] = 'Значение';
@@ -352,27 +350,24 @@ function initLang(key) {
 			values['table.fast_segment_speed.description'] = '[мм/с] Скорость, с которой будут печататься быстрые участки. Лучше указать высокие значения (100-150)';
 			values['table.slow_segment_speed.title'] = 'Скорость медленных участков';
 			values['table.slow_segment_speed.description'] = '[мм/с] Скорость, с которой будут печататься медленные участки. Лучше указать низкие значения (10-30)';
-			values['table.init_la.title'] = 'Начальное значение коэффициента LA';
+			values['table.init_la.title'] = 'Начальное значение коэффициента LA/PA';
 			values['table.init_la.description'] = 'С какого значения к-фактора начать калибровку. Округляется до 3 знака после разделителя';
-			values['table.end_la.title'] = 'Конечное значение коэффициента LA';
+			values['table.end_la.title'] = 'Конечное значение коэффициента LA/PA';
 			values['table.end_la.description'] = 'До какого значения к-фактора проводить калибровку. Округляется до 3 знака после разделителя. Для директ экструдеров обычно хватает 0.2, для боуденов 1.5';
 			values['table.num_segments.title'] = 'Количество сегментов';
-			values['table.num_segments.description'] = 'Количество сегментов башенки. В течение сегмента коэффициент LA остаётся неизменным. Сегменты визуально разделены для упрощения анализа модели';
+			values['table.num_segments.description'] = 'Количество сегментов башенки. В течение сегмента коэффициент LA/PA остаётся неизменным. Сегменты визуально разделены для упрощения анализа модели';
 			values['table.segment_height.title'] = 'Высота сегмента';
 			values['table.segment_height.description'] = '[мм] Высота одного сегмента башенки. К примеру, если высота сегмента 3мм, а количество сегментов 10, то высота всей башенки будет 30мм';
 			values['table.start_gcode.title'] = 'Начальный G-код';
-			values['table.start_gcode.description'] = 'Код, выполняемый перед печатью теста. Менять на свой страх и риск! Список возможных плейсхолдеров:<br><b>$BEDTEMP</b> - температура стола<br><b>$HOTTEMP</b> - температура хотэнда<br><b>$G29</b> - команда на снятие карты высот стола<br><b>$FLOW</b> - поток';
+			values['table.start_gcode.description'] = 'Начальный код выполняется перед печатью модели и служит для правильной инициализации принтера. Конечный код выполняется после окончания печати. На большинстве принтеров стандартные коды работают хорошо и менять их не надо. <a href="../#g-">Список возможных плейсхолдеров</a>';
 			values['table.end_gcode.title'] = 'Конечный G-код';
-			values['table.end_gcode.description'] = 'Код, выполняемый после печати теста. Менять на свой страх и риск!';
-			values['table.smooth_time.title'] = 'Время сглаживания LA/PA'
+			values['table.smooth_time.title'] = 'Время сглаживания PA';
+			values['table.smooth_time.description'] = '[с] В общем случае стоит оставить стандартные 0.04с. Если сталкиваетесь с дефектами от избыточного времени сглаживания (небольшие впадины до и после угла), то можно попробовать прогнать тесты с временем сглаживания 0.03 или 0.02с. Подробнее в инструкции. На Marlin и RRF этот параметр ничего не делает';
 			
 			values['generator.generate_and_download'] = 'Генерировать и скачать';		
 			values['generator.generate_button_loading'] = 'Генератор загружается...';		
 			values['generator.segment'] = '; Сегмент %d: K-Factor: %s\n';
 			values['generator.reset_to_default'] = 'Сбросить настройки';
-			
-			values['navbar.back'] = ' Назад ';
-			values['navbar.site'] = 'Сайт';
 			
 			values['error.bed_size_x.format'] = 'Размер оси Х - ошибка формата';
 			values['error.bed_size_x.small_or_big'] = 'Размер стола по X указан неверно (меньше 100 или больше 1000 мм)';
@@ -409,10 +404,12 @@ function initLang(key) {
 			values['error.fast_segment_speed.small_or_big'] = 'Скорость печати быстрых участков неверная (меньше 10 или больше 1000 мм/с)';
 			values['error.slow_segment_speed.format'] = 'Скорость печати медленных участков - ошибка формата';
 			values['error.slow_segment_speed.small_or_big'] = 'Скорость печати медленных участков неверная (меньше 10 или больше 1000 мм/с)';
-			values['error.init_la.format'] = 'Начальное значение коэффициента LA - ошибка формата';
+			values['error.init_la.format'] = 'Начальное значение коэффициента LA/PA - ошибка формата';
 			values['error.init_la.small_or_big'] = 'Начальное значение коэффициента LA неверное (меньше 0.0 или больше 2.0)';
-			values['error.end_la.format'] = 'Конечное значение коэффициента LA - ошибка формата';
-			values['error.end_la.small_or_big'] = 'Конечное значение коэффициента LA неверное (меньше 0.0 или больше 2.0)';
+			values['error.end_la.format'] = 'Конечное значение коэффициента LA/PA - ошибка формата';
+			values['error.end_la.small_or_big'] = 'Конечное значение коэффициента LA/PA неверное (меньше 0.0 или больше 2.0)';
+			values['error.smooth_time.format'] = 'Время сглаживания LA/PA - ошибка формата';
+			values['eroor.smooth_time.small_or_big'] = 'Время сглаживания LA/PA неверное (меньше 0.005 или больше 0.2)';
 			break;
 	}
 	
@@ -422,9 +419,8 @@ function initLang(key) {
 		var item = el[i];
 		item.innerHTML = window.lang.getString(item.id);
 	}
-	document.getElementsByClassName('generate-button')[0].innerHTML = window.lang.getString('generator.generate_and_download');
-	document.getElementsByClassName('reset-button')[0].innerHTML = window.lang.getString('generator.reset_to_default');
-	document.getElementsByClassName('navbar-direction')[0].innerHTML = window.lang.getString('navbar.back');
+	document.getElementById('generateButton').innerHTML = window.lang.getString('generator.generate_and_download');
+	document.getElementById('resetButton').innerHTML = window.lang.getString('generator.reset_to_default');
 	document.getElementById('generateButtonLoading').innerHTML = window.lang.getString('generator.generate_button_loading');
 }
 
